@@ -1,4 +1,4 @@
-# 🌿 Plantain2ASR (Подорожник для ASR)
+# 🌿 Plantain2ASR
 
 A benchmarking, comparison, and analysis framework for ASR models.
 "Applies" models to data, saves history, and heals your experiments.
@@ -157,7 +157,7 @@ Smart wrapper around a list of `AudioSample` objects.
 | `WhisperModel` | HuggingFace Transformers | any Whisper checkpoint |
 | `VoskModel` | Vosk (Kaldi) | fully offline, CPU |
 | `CanaryModel` | NVIDIA NeMo | requires `nemo_toolkit` |
-| `ToneModel` | HuggingFace `T-one/russiantone-large` | |
+| `ToneModel` | HuggingFace `t-tech/T-one` | |
 | `SaluteSpeechModel` | Sber REST API | requires API key |
 
 ### Available Metrics
@@ -169,4 +169,3 @@ Smart wrapper around a list of `AudioSample` objects.
 ## 📄 License
 
 MIT
-# plantain2asr

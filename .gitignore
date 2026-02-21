@@ -1,0 +1,49 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Experiment data & caches (not part of the library)
+asr_data/
+cache/
+checkpoints/
+wandb/
+*.jsonl
+*.json
+!pyproject.toml
+
+# Model weights
+*.pt
+*.pth
+*.bin
+*.ckpt
+*.onnx
+models/vosk-model-*/
+
+# Misc
+.DS_Store
+*.log
+*.tmp

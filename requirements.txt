@@ -1,0 +1,25 @@
+# Core (always required)
+torch>=2.0
+tqdm>=4.64
+requests>=2.28
+urllib3>=1.26
+
+# Local model backends (install what you need)
+transformers>=4.40        # GigaAM v2/v3, Whisper, Canary
+accelerate>=0.27          # Efficient GPU inference
+vosk>=0.3.45              # Vosk offline model
+# nemo_toolkit[asr]>=1.23  # NVIDIA Canary (heavy, install manually)
+
+# Analysis & metrics
+pandas>=1.5
+numpy>=1.23
+matplotlib>=3.6
+seaborn>=0.12
+scikit-learn>=1.2
+bert-score>=0.3.13
+pymorphy3>=1.0
+gensim>=4.3
+
+# Training (optional)
+# datasets>=2.14
+# wandb>=0.16

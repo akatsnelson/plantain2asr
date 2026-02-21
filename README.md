@@ -1,4 +1,4 @@
-# 🌿 Plantain2ASR (Подорожник)
+# 🌿 Plantain2ASR (Подорожник для ASR)
 
 A benchmarking, comparison, and analysis framework for ASR models.
 "Applies" models to data, saves history, and heals your experiments.
@@ -169,3 +169,4 @@ Smart wrapper around a list of `AudioSample` objects.
 ## 📄 License
 
 MIT
+# plantain2asr

@@ -3,6 +3,7 @@ import pandas as pd
 from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from ..dataloaders.base import BaseASRDataset
+from ..core.processor import Processor
 
 @dataclass
 class BootstrapReport:
@@ -13,7 +14,7 @@ class BootstrapReport:
         print("-" * 80)
         print(self.ci_df.to_markdown(index=False, floatfmt=".2f"))
 
-class BootstrapAnalyzer:
+class BootstrapAnalyzer(Processor):
     """
     Рассчитывает доверительные интервалы (Confidence Intervals) для WER
     используя метод Bootstrap. Позволяет оценить статистическую значимость разницы.
@@ -22,7 +23,7 @@ class BootstrapAnalyzer:
         self.n_iterations = n_iterations
         self.ci_level = ci_level
 
-    def apply_to(self, dataset: BaseASRDataset) -> BootstrapReport:
+    def apply_to(self, dataset: BaseASRDataset) -> BaseASRDataset:
         models = set()
         for s in dataset:
             models.update(s.asr_results.keys())
@@ -74,5 +75,8 @@ class BootstrapAnalyzer:
         df = pd.DataFrame(results)
         if 'Mean WER (%)' in df.columns:
             df = df.sort_values('Mean WER (%)')
-            
-        return BootstrapReport(df)
+
+        report = BootstrapReport(df)
+        report.print()
+        self.report = report
+        return dataset

@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import List, Union, Any, Tuple, Optional
+from typing import List, Union, Any, Tuple, Optional, TYPE_CHECKING
 from pathlib import Path
 import time
 import copy
 from ..dataloaders.types import AudioSample
+from ..core.processor import Processor
 
-class BaseASRModel(ABC):
+if TYPE_CHECKING:
+    from ..dataloaders.base import BaseASRDataset
+
+
+class BaseASRModel(Processor):
     """
     Абстрактный базовый класс для всех ASR моделей (локальных и облачных).
     """
@@ -15,6 +20,15 @@ class BaseASRModel(ABC):
     def name(self) -> str:
         """Уникальное имя модели (например, 'GigaAM-v3-CTC')"""
         pass
+
+    @property
+    def is_e2e(self) -> bool:
+        """
+        True, если модель умеет выводить пунктуацию (end-to-end).
+        Такие модели следует оценивать с учётом пунктуации (do_clean=False).
+        По умолчанию False — большинство моделей пунктуацию не выдают.
+        """
+        return False
 
     @abstractmethod
     def transcribe(self, audio_path: Union[str, Path]) -> str:
@@ -89,6 +103,18 @@ class BaseASRModel(ABC):
                 self.process_sample(s, inplace=True)
                 
         return samples
+
+    # ===== Processor API =====
+
+    def apply_to(self, dataset: 'BaseASRDataset') -> 'BaseASRDataset':
+        """
+        Интеграция с pipeline >>. Транскрибирует весь датасет.
+        Параметры батчинга берутся из атрибутов модели (batch_size, save_step).
+        """
+        batch_size = getattr(self, 'batch_size', 32)
+        save_step  = getattr(self, 'save_step', 32)
+        dataset._apply_model(self, batch_size=batch_size, save_step=save_step)
+        return dataset
 
     # ===== Training API =====
 

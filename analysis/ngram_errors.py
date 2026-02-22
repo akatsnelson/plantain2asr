@@ -3,6 +3,7 @@ import pandas as pd
 from typing import List, Tuple, Dict
 from dataclasses import dataclass
 from ..dataloaders.base import BaseASRDataset
+from ..core.processor import Processor
 
 try:
     import jiwer
@@ -25,7 +26,7 @@ class NgramReport:
         print(f"\n📈 Top Hallucinated Phrases (Insertions):")
         print(self.top_inserted.to_markdown(index=False))
 
-class NgramErrorAnalyzer:
+class NgramErrorAnalyzer(Processor):
     """
     Анализирует ошибки на уровне фраз (n-грамм).
     Помогает найти устойчивые словосочетания, которые модель:
@@ -42,8 +43,9 @@ class NgramErrorAnalyzer:
         if len(words) < self.n: return []
         return [" ".join(words[i:i+self.n]) for i in range(len(words)-self.n+1)]
 
-    def apply_to(self, dataset: BaseASRDataset) -> NgramReport:
-        if jiwer is None: return None
+    def apply_to(self, dataset: BaseASRDataset) -> BaseASRDataset:
+        if jiwer is None:
+            return dataset
         print(f"🔗 Analyzing {self.n}-gram errors...")
         
         missed_ngrams = Counter()
@@ -100,4 +102,5 @@ class NgramErrorAnalyzer:
         
         report = NgramReport(self.n, missed_df, inserted_df)
         report.print()
-        return report
+        self.report = report
+        return dataset

@@ -3,6 +3,7 @@ import pandas as pd
 from dataclasses import dataclass
 from typing import List, Dict
 from ..dataloaders.base import BaseASRDataset
+from ..core.processor import Processor
 
 @dataclass
 class DurationReport:
@@ -15,7 +16,7 @@ class DurationReport:
         print("\n💡 Insight: Models often fail on very short (<3s) due to lack of context")
         print("           or very long (>20s) due to attention limits.")
 
-class DurationAnalyzer:
+class DurationAnalyzer(Processor):
     """
     Анализирует качество (WER) в зависимости от длительности аудио.
     Разбивает на группы: Short, Medium, Long, Extra Long.
@@ -24,7 +25,7 @@ class DurationAnalyzer:
         self.bins = bins
         self.labels = labels
 
-    def apply_to(self, dataset: BaseASRDataset) -> DurationReport:
+    def apply_to(self, dataset: BaseASRDataset) -> BaseASRDataset:
         print("⏳ Analyzing WER by duration...")
         
         models = set()
@@ -62,7 +63,7 @@ class DurationAnalyzer:
                 row[m] = np.mean(wers) * 100 if wers else None
             data.append(row)
             
-        df = pd.DataFrame(data)
-        report = DurationReport(df)
+        report = DurationReport(pd.DataFrame(data))
         report.print()
-        return report
+        self.report = report
+        return dataset

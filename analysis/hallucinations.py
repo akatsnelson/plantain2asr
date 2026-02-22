@@ -3,6 +3,7 @@ import pandas as pd
 from dataclasses import dataclass
 from typing import List, Dict, Set
 from ..dataloaders.base import BaseASRDataset
+from ..core.processor import Processor
 
 @dataclass
 class HallucinationReport:
@@ -23,7 +24,7 @@ class HallucinationReport:
                 print(f"     Ref: '{ex['ref']}'")
                 print(f"     Hyp: '{ex['hyp']}'")
 
-class HallucinationAnalyzer:
+class HallucinationAnalyzer(Processor):
     """
     Выявляет "галлюцинации" моделей:
     1. Гипотеза намного длиннее референса.
@@ -56,7 +57,7 @@ class HallucinationAnalyzer:
             
         return None
 
-    def apply_to(self, dataset: BaseASRDataset) -> HallucinationReport:
+    def apply_to(self, dataset: BaseASRDataset) -> BaseASRDataset:
         print("👻 Detecting hallucinations...")
         
         models = set()
@@ -99,4 +100,5 @@ class HallucinationAnalyzer:
             
         report = HallucinationReport(df, examples)
         report.print()
-        return report
+        self.report = report
+        return dataset

@@ -51,6 +51,10 @@ class GigaAMv3(BaseASRModel):
     def name(self) -> str:
         return self._name
 
+    @property
+    def is_e2e(self) -> bool:
+        return "e2e" in self._name.lower()
+
     def transcribe(self, audio_path: Union[str, Path]) -> str:
         # transcribe доступен на верхней обертке
         return self.model.transcribe(str(audio_path)).strip()

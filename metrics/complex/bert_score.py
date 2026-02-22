@@ -13,8 +13,8 @@ class BERTScore(BaseMetric):
     Внимание: Требует загрузки модели (~500MB-1GB) и работает медленно на CPU.
     """
     
-    def __init__(self, do_clean: bool = True, model_name: str = "bert-base-multilingual-cased"):
-        super().__init__(do_clean)
+    def __init__(self, model_name: str = "bert-base-multilingual-cased", normalizer=None):
+        super().__init__(normalizer=normalizer)
         self.model_name = model_name
         # Инициализируем лениво, чтобы не грузить модель при импорте
         self._metric = None
@@ -37,7 +37,7 @@ class BERTScore(BaseMetric):
         return "BERTScore"
 
     def calculate(self, reference: str, hypothesis: str) -> float:
-        if self.do_clean:
+        if self._normalizer is not None:
             reference = self.normalize(reference)
             hypothesis = self.normalize(hypothesis)
 
@@ -58,7 +58,7 @@ class BERTScore(BaseMetric):
             return float(f1.mean().item()) * 100.0
 
     def calculate_batch(self, references: List[str], hypotheses: List[str]) -> float:
-        if self.do_clean:
+        if self._normalizer is not None:
             references = [self.normalize(r) for r in references]
             hypotheses = [self.normalize(h) for h in hypotheses]
 

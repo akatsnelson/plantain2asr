@@ -10,6 +10,7 @@ except ImportError:
     jiwer = None
 
 from ..dataloaders.base import BaseASRDataset
+from ..core.processor import Processor
 
 @dataclass
 class PerformanceReport:
@@ -21,7 +22,7 @@ class PerformanceReport:
         # Форматируем для красивого вывода
         print(self.summary_df.to_markdown(index=False, floatfmt=".2f"))
 
-class PerformanceAnalyzer:
+class PerformanceAnalyzer(Processor):
     """
     Анализирует общую производительность моделей:
     - Quality: WER, CER
@@ -32,7 +33,7 @@ class PerformanceAnalyzer:
     def __init__(self, catastrophic_threshold: float = 1.0):
         self.catastrophic_threshold = catastrophic_threshold # WER > 100% считается катастрофой
 
-    def apply_to(self, dataset: BaseASRDataset) -> PerformanceReport:
+    def apply_to(self, dataset: BaseASRDataset) -> BaseASRDataset:
         if len(dataset) == 0:
             print("⚠️ Dataset is empty.")
             return None
@@ -138,8 +139,10 @@ class PerformanceAnalyzer:
             results_data.append(row)
 
         df = pd.DataFrame(results_data)
-        # Сортировка по WER
         if 'WER (%)' in df.columns:
             df = df.sort_values('WER (%)')
-            
-        return PerformanceReport(df)
+
+        report = PerformanceReport(df)
+        report.print()
+        self.report = report
+        return dataset

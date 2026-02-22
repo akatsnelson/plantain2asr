@@ -1,11 +1,18 @@
-from typing import List
-from torchmetrics.text import MatchErrorRate as TorchMER
+from typing import List, Optional, TYPE_CHECKING
+import jiwer
 from ..base import BaseMetric
 
+if TYPE_CHECKING:
+    from ...normalization.base import BaseNormalizer
+
+
 class MER(BaseMetric):
-    def __init__(self, do_clean: bool = False):
-        super().__init__(do_clean)
-        self.metric = TorchMER()
+    """
+    Match Error Rate (jiwer).
+
+    MER = (S + D + I) / (H + S + D + I)
+        где H — совпадения, S — замены, D — пропуски, I — вставки.
+    """
 
     @property
     def name(self) -> str:
@@ -17,14 +24,12 @@ class MER(BaseMetric):
 
         if not reference.strip():
             return 100.0 if hypothesis.strip() else 0.0
-            
-        score = self.metric([hypothesis], [reference])
-        return float(score) * 100.0
+
+        return jiwer.mer(reference, hypothesis) * 100.0
 
     def calculate_batch(self, references: List[str], hypotheses: List[str]) -> float:
-        if self.do_clean:
+        if self._normalizer is not None:
             references = [self.normalize(r) for r in references]
             hypotheses = [self.normalize(h) for h in hypotheses]
 
-        score = self.metric(hypotheses, references)
-        return float(score) * 100.0
+        return jiwer.mer(references, hypotheses) * 100.0

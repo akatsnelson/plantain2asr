@@ -21,8 +21,8 @@ class PosErrorAnalysis(BaseMetric):
     Использует pymorphy2 для определения частей речи.
     """
     
-    def __init__(self, do_clean: bool = True):
-        super().__init__(do_clean)
+    def __init__(self, normalizer=None):
+        super().__init__(normalizer=normalizer)
         self.morph = pymorphy2.MorphAnalyzer()
         
         # Маппинг тегов pymorphy2 в человекочитаемые
@@ -60,7 +60,7 @@ class PosErrorAnalysis(BaseMetric):
         """
         Возвращает статистику по частям речи.
         """
-        if self.do_clean:
+        if self._normalizer is not None:
             reference = self.normalize(reference)
             hypothesis = self.normalize(hypothesis)
             

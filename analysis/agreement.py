@@ -3,6 +3,7 @@ from typing import List, Dict, Set
 import pandas as pd
 from dataclasses import dataclass
 from ..dataloaders.base import BaseASRDataset
+from ..core.processor import Processor
 
 @dataclass
 class AgreementReport:
@@ -34,7 +35,7 @@ class AgreementReport:
                 for model, hyp in list(item['hyps'].items())[:4]: # Показываем первые 4
                     print(f"   - {model}: {hyp}")
 
-class AgreementAnalyzer:
+class AgreementAnalyzer(Processor):
     """
     Анализирует согласованность между моделями.
     Помогает найти сложные (где модели расходятся) и легкие (где согласны) примеры.
@@ -42,7 +43,7 @@ class AgreementAnalyzer:
     def __init__(self, min_models: int = 2):
         self.min_models = min_models
 
-    def apply_to(self, dataset: BaseASRDataset) -> AgreementReport:
+    def apply_to(self, dataset: BaseASRDataset) -> BaseASRDataset:
         print(f"🤝 Analyzing model agreement...")
         
         all_agree = 0
@@ -80,15 +81,16 @@ class AgreementAnalyzer:
                 
         if valid_samples == 0:
             print("⚠️ Not enough samples with multiple model results.")
-            return None
-            
+            self.report = None
+            return dataset
+
         report = AgreementReport(
             total_samples=valid_samples,
             all_agree=all_agree,
             none_agree=none_agree,
             partial_agree=partial_agree,
-            disagreements=disagreements
+            disagreements=disagreements,
         )
-        
         report.print()
-        return report
+        self.report = report
+        return dataset

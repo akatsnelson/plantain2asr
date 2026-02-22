@@ -1,17 +1,35 @@
+# ── Core data types ──────────────────────────────────────────────────
+from .dataloaders import NeMoDataset, DagrusDataset, GolosDataset, AudioSample
+
+# ── Pipeline building blocks ─────────────────────────────────────────
 from .models import Models
 from .metrics import Metrics
-from .dataloaders import NeMoDataset, DagrusDataset, AudioSample
+from .normalization import BaseNormalizer, SimpleNormalizer, DagrusNormalizer
 from .utils.functional import Filter, Sort, Take, Split
-from .train import TrainingConfig, GigaAMTrainer
+
+# ── Reporting (interactive server + extensible sections) ─────────────
+from .reporting import (
+    ReportServer,
+    ReportBuilder,
+    BaseSection,
+    MetricsSection,
+    ErrorFrequencySection,
+    DiffSection,
+)
+
+# ── Analysis tools ───────────────────────────────────────────────────
 from .analysis import (
     WordErrorAnalyzer,
+    DiffVisualizer,          # deprecated → prefer ReportServer
     PerformanceAnalyzer,
     BootstrapAnalyzer,
     AgreementAnalyzer,
     TopicAnalyzer,
     HallucinationAnalyzer,
     DurationAnalyzer,
-    DiffVisualizer,
     NgramErrorAnalyzer,
     CalibrationAnalyzer,
 )
+
+# ── Training ─────────────────────────────────────────────────────────
+from .train import TrainingConfig, GigaAMTrainer

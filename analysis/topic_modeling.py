@@ -15,6 +15,7 @@ except ImportError:
     GENSIM_AVAILABLE = False
 
 from ..dataloaders.base import BaseASRDataset
+from ..core.processor import Processor
 
 # Стоп-слова (взяты из вашего скрипта)
 STOPWORDS = {
@@ -53,7 +54,7 @@ class TopicReport:
         
         print("\n💡 Insight: Topics with high WER are candidates for targeted fine-tuning.")
 
-class TopicAnalyzer:
+class TopicAnalyzer(Processor):
     """
     Выполняет тематическое моделирование (LDA) на текстах датасета.
     Позволяет выявить скрытые темы и оценить качество распознавания в разрезе тем.
@@ -103,13 +104,12 @@ class TopicAnalyzer:
         print("✅ LDA training complete.")
         return self
 
-    def apply_to(self, dataset: BaseASRDataset) -> TopicReport:
+    def apply_to(self, dataset: BaseASRDataset) -> BaseASRDataset:
         if not GENSIM_AVAILABLE or not self.lda_model:
-            # Если модели нет, попробуем обучить на лету
             if GENSIM_AVAILABLE:
                 self.fit(dataset)
             else:
-                return None
+                return dataset
         
         print("🧠 Analyzing topics and errors...")
         
@@ -193,4 +193,5 @@ class TopicAnalyzer:
         )
         
         report.print()
-        return report
+        self.report = report
+        return dataset

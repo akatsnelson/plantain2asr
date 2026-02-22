@@ -1,8 +1,7 @@
-from typing import List, Optional, Union
+from typing import List, Optional, TYPE_CHECKING
 from .base import BaseMetric
 from .composite import CompositeMetric
 
-# Import metric classes
 from .simple.wer import WER
 from .simple.cer import CER
 from .simple.mer import MER
@@ -14,78 +13,102 @@ from .simple.length_ratio import LengthRatio
 from .complex.pos_analysis import PosErrorAnalysis
 from .complex.bert_score import BERTScore
 
+if TYPE_CHECKING:
+    from ..normalization.base import BaseNormalizer
+
+
 class Metrics:
     """
-    Фабрика для метрик.
-    Позволяет создавать как отдельные метрики, так и композитные наборы.
+    Фабрика метрик plantain2asr.
+
+    Типичное использование:
+        # Нормализуем данные ДО метрик — рекомендуемый способ:
+        dataset >> DagrusNormalizer() >> Metrics.composite()
+
+        # Нормализация внутри метрик (устаревший стиль):
+        Metrics.composite(normalizer=SimpleNormalizer())
     """
-    
+
     _REGISTRY = {
-        "wer": WER,
-        "cer": CER,
-        "mer": MER,
-        "wil": WIL,
-        "wip": WIP,
-        "accuracy": Accuracy,
-        "idr": IDR,
+        "wer":          WER,
+        "cer":          CER,
+        "mer":          MER,
+        "wil":          WIL,
+        "wip":          WIP,
+        "accuracy":     Accuracy,
+        "idr":          IDR,
         "length_ratio": LengthRatio,
         "pos_analysis": PosErrorAnalysis,
-        "bert_score": BERTScore
+        "bert_score":   BERTScore,
     }
 
     @classmethod
     def list(cls) -> List[str]:
-        """Список доступных метрик"""
+        """Список доступных метрик."""
         return list(cls._REGISTRY.keys())
 
     @classmethod
     def get(cls, name: str, **kwargs) -> BaseMetric:
-        """Создает экземпляр одной метрики по имени"""
+        """Создаёт экземпляр одной метрики по имени."""
         key = name.lower()
         if key in cls._REGISTRY:
             return cls._REGISTRY[key](**kwargs)
-        raise ValueError(f"Unknown metric: {name}")
+        raise ValueError(f"Unknown metric: '{name}'. Available: {cls.list()}")
 
     @classmethod
-    def create_composite(cls, names: Optional[List[str]] = None, do_clean: bool = True) -> CompositeMetric:
+    def composite(
+        cls,
+        names: Optional[List[str]] = None,
+        normalizer: Optional['BaseNormalizer'] = None,
+    ) -> CompositeMetric:
         """
-        Создает CompositeMetric из списка названий.
-        Аналог старой функции create_metrics.
+        Создаёт CompositeMetric из списка метрик.
+
+        Args:
+            names:      Список метрик по имени. None → стандартный набор
+                        (wer, cer, mer, wil, wip, accuracy, idr, length_ratio).
+            normalizer: Нормализатор, передаётся в каждую метрику.
+                        Рекомендуется применять нормализатор на уровне датасета,
+                        а не здесь.
         """
-        selected_metrics = []
-        
-        # Стандартный набор (без тяжелых метрик вроде BERTScore)
         if not names or "all" in names:
             names = ["wer", "cer", "mer", "wil", "wip", "accuracy", "idr", "length_ratio"]
 
+        selected = []
         for name in names:
             key = name.lower()
             if key in cls._REGISTRY:
-                # Передаем классы в CompositeMetric (он сам их инстанцирует)
-                selected_metrics.append(cls._REGISTRY[key])
+                selected.append(cls._REGISTRY[key])
             else:
-                print(f"⚠️ Warning: Metric '{name}' not found. Skipping.")
+                print(f"⚠️ Metric '{name}' not found. Skipping.")
 
-        return CompositeMetric(metrics=selected_metrics, do_clean=do_clean)
+        return CompositeMetric(metrics=selected, normalizer=normalizer)
+
+    # Псевдоним для обратной совместимости
+    @classmethod
+    def create_composite(cls, names=None, normalizer=None, **_ignored) -> CompositeMetric:
+        """Псевдоним для composite(). Параметр do_clean удалён."""
+        return cls.composite(names=names, normalizer=normalizer)
 
     # === Shortcuts ===
-    
+
     @staticmethod
-    def WER(**kwargs) -> WER: return WER(**kwargs)
-    
+    def WER(**kwargs) -> WER:
+        return WER(**kwargs)
+
     @staticmethod
-    def CER(**kwargs) -> CER: return CER(**kwargs)
-    
+    def CER(**kwargs) -> CER:
+        return CER(**kwargs)
+
     @staticmethod
-    def MER(**kwargs) -> MER: return MER(**kwargs)
-    
+    def MER(**kwargs) -> MER:
+        return MER(**kwargs)
+
     @staticmethod
-    def Accuracy(**kwargs) -> Accuracy: return Accuracy(**kwargs)
+    def Accuracy(**kwargs) -> Accuracy:
+        return Accuracy(**kwargs)
 
     @staticmethod
     def BERTScore(model_name: str = "bert-base-multilingual-cased", **kwargs) -> BERTScore:
-        """
-        Semantic similarity metric using BERT embeddings.
-        Heavy metric! Loads a model.
-        """
+        """Семантическая метрика через BERT. Тяжёлая — загружает модель."""
         return BERTScore(model_name=model_name, **kwargs)

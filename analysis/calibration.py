@@ -3,6 +3,7 @@ import pandas as pd
 from typing import List, Optional
 from dataclasses import dataclass
 from ..dataloaders.base import BaseASRDataset
+from ..core.processor import Processor
 
 try:
     import matplotlib.pyplot as plt
@@ -26,7 +27,7 @@ class CalibrationReport:
         print("\nData Summary:")
         print(self.data.to_markdown(index=False, floatfmt=".1f"))
 
-class CalibrationAnalyzer:
+class CalibrationAnalyzer(Processor):
     """
     Строит график зависимости качества (WER) от длительности аудио.
     Помогает понять 'зону комфорта' модели (например, 5-15 секунд)
@@ -36,7 +37,7 @@ class CalibrationAnalyzer:
         self.output_plot = output_plot
         self.bins = bins
 
-    def apply_to(self, dataset: BaseASRDataset) -> CalibrationReport:
+    def apply_to(self, dataset: BaseASRDataset) -> BaseASRDataset:
         print("📈 Generating Calibration Plot...")
         
         data_points = []
@@ -56,7 +57,8 @@ class CalibrationAnalyzer:
         df = pd.DataFrame(data_points)
         if df.empty:
             print("⚠️ No data for calibration plot.")
-            return None
+            self.report = None
+            return dataset
             
         # Биннинг по длительности
         df['DurationBin'] = pd.cut(df['Duration'], bins=self.bins)
@@ -93,7 +95,8 @@ class CalibrationAnalyzer:
         
         report = CalibrationReport(
             plot_path=self.output_plot if MATPLOTLIB_AVAILABLE else None,
-            data=pivot_df
+            data=pivot_df,
         )
         report.print()
-        return report
+        self.report = report
+        return dataset

@@ -85,7 +85,7 @@ class BaseASRDataset(ABC, Dataset):
                     continue
 
         print(f"[{self.name}] Loaded {len(self._samples)} samples from {self.manifest_path}")
-        
+
     def __len__(self) -> int:
         return len(self._samples)
 
@@ -308,142 +308,205 @@ class BaseASRDataset(ABC, Dataset):
 
     def apply(self, processors: Union[object, List[object]], **kwargs) -> 'BaseASRDataset':
         """
-        Универсальный метод для применения Моделей (ASR) или Метрик.
-        Паттерн Visitor / Pipeline.
-        
+        Применяет один или несколько процессоров к датасету.
+
+        Каждый процессор должен реализовывать интерфейс Processor (метод apply_to).
+        Для передачи параметров (batch_size, save_step и т.д.) передавайте их
+        непосредственно конструктору процессора или используйте >> оператор.
+
         Args:
-            processors: Одна модель/метрика или список.
-            **kwargs: Аргументы (batch_size, save_step, force, force_process).
+            processors: Один процессор или список процессоров.
+            **kwargs:   Устарело. Передавайте параметры в конструктор процессора.
         """
         if not isinstance(processors, list):
             processors = [processors]
-            
-        print(f"🚀 Applying {len(processors)} processors...")
 
+        dataset = self
         for p in processors:
-            # Duck typing check
-            is_model = hasattr(p, 'transcribe') or hasattr(p, 'process_samples')
-            is_metric = hasattr(p, 'calculate') and hasattr(p, 'name') and not is_model
-            
-            if is_model:
-                valid_args = ['batch_size', 'save_step', 'force_process']
-                model_kwargs = {k: v for k, v in kwargs.items() if k in valid_args}
-                self._apply_model(p, **model_kwargs)
-                
-            elif is_metric:
-                force = kwargs.get('force', True)
-                self._apply_metric(p, force=force)
+            if hasattr(p, 'apply_to'):
+                result = p.apply_to(dataset)
+                if result is not None:
+                    dataset = result
             else:
-                print(f"⚠️ Unknown processor type: {type(p)}. Skipping.")
-                
-        return self # Fluent API support
+                raise TypeError(
+                    f"Processor {type(p).__name__} не реализует метод apply_to(). "
+                    "Унаследуйтесь от plantain2asr.core.Processor."
+                )
+
+        return dataset
 
     # ===== Internal Logic =====
 
     def _apply_model(
-        self, 
-        model: 'BaseASRModel', 
+        self,
+        model: 'BaseASRModel',
         batch_size: int = 32,
         save_step: int = 32,
-        force_process: bool = False
+        force_process: bool = False,
     ):
-        """Применяет ОДНУ модель к датасету."""
+        """Применяет ОДНУ модель к датасету с кэшированием.
+
+        Args:
+            model:         ASR-модель.
+            batch_size:    Количество сэмплов на один вызов model.process_samples.
+            save_step:     Записывать в кэш каждые N сэмплов.
+            force_process: Если True — удаляет старый кэш и пересчитывает всё заново.
+                           Если False (по умолчанию) — дозаписывает только то, что не обработано.
+        """
         print(f"\nEvaluating {model.name}...")
-        
-        # Если форсируем - чистим всё старое
+
+        # 1. Опционально: чистим старые результаты
         if force_process:
-            print(f"   🔄 Force processing enabled: clearing previous results for {model.name}")
+            print(f"   🔄 Force: clearing previous results for {model.name}")
             cache_path = self._get_cache_path(model.name)
             if cache_path.exists():
                 os.remove(cache_path)
-                print(f"      Deleted cache file: {cache_path}")
-            
-            # Чистим результаты в памяти
-            cleared_count = 0
-            for s in self._samples:
-                if model.name in s.asr_results:
-                    del s.asr_results[model.name]
-                    cleared_count += 1
-            if cleared_count:
-                print(f"      Cleared {cleared_count} in-memory results")
-            
-            # 1. Загружаем кэш (восстановление)
-            loaded_count = self._load_cache_for_model(model.name)
-            if loaded_count > 0:
-                print(f"   ⏩ Resumed {loaded_count} samples from cache")
-                
-            # 2. Определяем, что осталось обработать
-            todo_samples = [s for s in self._samples if model.name not in s.asr_results]
-            
-            if not todo_samples:
-                print(f"   ✅ All samples processed for {model.name}")
+                print(f"      Deleted cache: {cache_path}")
+
+            cleared = sum(
+                1 for s in self._samples
+                if s.asr_results.pop(model.name, None) is not None
+            )
+            if cleared:
+                print(f"      Cleared {cleared} in-memory results")
+
+        # 2. Всегда: подгружаем то, что уже есть в кэше
+        loaded_count = self._load_cache_for_model(model.name)
+        if loaded_count > 0:
+            print(f"   ⏩ Resumed {loaded_count} samples from cache")
+
+        # 3. Определяем, что осталось обработать
+        todo_samples = [s for s in self._samples if model.name not in s.asr_results]
+
+        if not todo_samples:
+            print(f"   ✅ All samples already processed for {model.name}")
             return
-                
-            print(f"   🔥 Processing {len(todo_samples)} remaining samples...")
-            
-            cache_path = self._get_cache_path(model.name)
-            
-            # 3. Обрабатываем чанками
-            with open(cache_path, 'a', encoding='utf-8') as f_cache:
-                
-                for i in tqdm(range(0, len(todo_samples), save_step), desc=f"{model.name}"):
-                    chunk = todo_samples[i : i + save_step]
-                    
-                    # Саб-батчинг для модели
-                    processed_chunk = []
-                    for j in range(0, len(chunk), batch_size):
-                        sub_batch = chunk[j : j + batch_size]
-                        model.process_samples(sub_batch, inplace=True)
-                        processed_chunk.extend(sub_batch)
-                    
-                # Сохраняем полный сэмпл
-                    for sample in processed_chunk:
-                        f_cache.write(json.dumps(sample.to_dict(), ensure_ascii=False) + '\n')
-                    f_cache.flush()
+
+        print(f"   🔥 Processing {len(todo_samples)} remaining samples...")
+
+        cache_path = self._get_cache_path(model.name)
+
+        # 4. Обрабатываем чанками, дозаписываем в кэш
+        with open(cache_path, 'a', encoding='utf-8') as f_cache:
+            for i in tqdm(range(0, len(todo_samples), save_step), desc=model.name):
+                chunk = todo_samples[i : i + save_step]
+
+                processed_chunk = []
+                for j in range(0, len(chunk), batch_size):
+                    sub_batch = chunk[j : j + batch_size]
+                    model.process_samples(sub_batch, inplace=True)
+                    processed_chunk.extend(sub_batch)
+
+                for sample in processed_chunk:
+                    f_cache.write(json.dumps(sample.to_dict(), ensure_ascii=False) + '\n')
+                f_cache.flush()
 
     def _apply_metric(self, evaluator: 'BaseMetric', force: bool = False):
-        """Применяет ОДНУ метрику ко всем результатам."""
-        
-        # Ищем все доступные модели в сэмплах
-        found_models = set()
+        """Применяет метрику ко всем результатам.
+
+        Если evaluator поддерживает calculate_batch_per_sample (CompositeMetric
+        со стандартным набором) — использует батчевый режим jiwer:
+        2 вызова на модель вместо N_samples × N_metrics.
+        Иначе — стандартный per-sample режим.
+        """
+        found_models: set = set()
         for s in self._samples:
             found_models.update(s.asr_results.keys())
         model_names = list(found_models)
-            
+
         metric_name = getattr(evaluator, 'name', 'Metric')
-        print(f"📊 Calculating {metric_name} for {len(model_names)} models (force={force})...")
-        
+        use_batch   = (
+            hasattr(evaluator, 'calculate_batch_per_sample')
+            and getattr(evaluator, '_use_fast_path', False)
+        )
+
+        mode = "batch (fast)" if use_batch else "per-sample"
+        print(f"📊 Calculating {metric_name} [{mode}] for {len(model_names)} models...")
+
+        if use_batch:
+            count = self._apply_metric_batch(evaluator, model_names, metric_name, force)
+        else:
+            count = self._apply_metric_per_sample(evaluator, model_names, metric_name, force)
+
+        print(f"✅ Updated {metric_name} for {count} entries")
+
+    def _apply_metric_batch(self, evaluator, model_names, metric_name, force):
+        """Батчевый путь: 2 jiwer-вызова на модель."""
+        count = 0
+        for m_name in model_names:
+            # Собираем сэмплы, для которых нужен расчёт
+            todo = []
+            for s in self._samples:
+                if not s.text or m_name not in s.asr_results:
+                    continue
+                res = s.asr_results[m_name]
+                if res.get('error'):
+                    continue
+                if not force and 'metrics' in res and metric_name in res.get('metrics', {}):
+                    continue
+                todo.append(s)
+
+            if not todo:
+                continue
+
+            refs = [s.text for s in todo]
+            hyps = [s.asr_results[m_name].get('hypothesis', '') for s in todo]
+
+            try:
+                batch_results = evaluator.calculate_batch_per_sample(refs, hyps)
+            except Exception as e:
+                print(f"  ⚠️ Batch failed for {m_name}: {e}. Falling back to per-sample.")
+                batch_results = None
+
+            if batch_results is None:
+                # Fallback: per-sample
+                for s in tqdm(todo, desc=m_name):
+                    res = s.asr_results[m_name]
+                    if 'metrics' not in res:
+                        res['metrics'] = {}
+                    try:
+                        r = evaluator.calculate(s.text, res.get('hypothesis', ''))
+                        res['metrics'].update(r if isinstance(r, dict) else {metric_name: r})
+                        count += 1
+                    except Exception as e:
+                        print(f"Error for {s.id}: {e}")
+                continue
+
+            for s, metrics_dict in zip(tqdm(todo, desc=m_name), batch_results):
+                res = s.asr_results[m_name]
+                if 'metrics' not in res:
+                    res['metrics'] = {}
+                res['metrics'].update(metrics_dict)
+                count += 1
+
+        return count
+
+    def _apply_metric_per_sample(self, evaluator, model_names, metric_name, force):
+        """Стандартный per-sample путь."""
         count = 0
         for sample in tqdm(self._samples, desc=f"Evaluating {metric_name}"):
             if not sample.text:
                 continue
-                
             for m_name in model_names:
-                if m_name in sample.asr_results:
-                    res = sample.asr_results[m_name]
-                    
-                    # Если метрик нет ИЛИ мы форсируем пересчет
-                    if force or 'metrics' not in res or metric_name not in res.get('metrics', {}):
-                        hyp = res.get('hypothesis', '')
-                        if hyp and not res.get('error'):
-                            if 'metrics' not in res:
-                                res['metrics'] = {}
-                                
-                            try:
-                                result = evaluator.calculate(sample.text, hyp)
-                                
-                                # Корректная обработка результатов метрик
-                                if isinstance(result, dict):
-                                    new_metrics = result
-                                else:
-                                    new_metrics = {metric_name: result}
-                                    
-                                res['metrics'].update(new_metrics)
-                                count += 1
-                            except Exception as e:
-                                print(f"Error computing metrics for {sample.id}: {e}")
-                            
-        print(f"✅ Updated {metric_name} for {count} entries")
+                if m_name not in sample.asr_results:
+                    continue
+                res = sample.asr_results[m_name]
+                if res.get('error'):
+                    continue
+                if not force and 'metrics' in res and metric_name in res.get('metrics', {}):
+                    continue
+                if 'metrics' not in res:
+                    res['metrics'] = {}
+                try:
+                    result = evaluator.calculate(sample.text, res.get('hypothesis', ''))
+                    if isinstance(result, dict):
+                        res['metrics'].update(result)
+                    else:
+                        res['metrics'][metric_name] = result
+                    count += 1
+                except Exception as e:
+                    print(f"Error computing metrics for {sample.id}: {e}")
+        return count
 
     
     # ===== Сохранение, Загрузка и Экспорт =====
@@ -501,6 +564,73 @@ class BaseASRDataset(ABC, Dataset):
                 f.write(json.dumps(data, ensure_ascii=False) + '\n')
                 saved_count += 1
         print(f"   Saved {saved_count} lines")
+
+    def load_model_results(self, model_name: str, jsonl_path: str) -> int:
+        """
+        Загружает предрасчитанные результаты инференса из JSONL-файла.
+
+        Используется для импорта результатов, полученных на другой машине
+        (скриптом ``scripts/run_inference.py`` или любым другим инструментом).
+
+        Каждая строка файла должна содержать минимум::
+
+            {"audio_path": "/any/path/file.wav", "hypothesis": "текст"}
+
+        Опционально: ``processing_time`` или ``time`` (секунды инференса).
+
+        Сэмплы сопоставляются по **имени файла** (basename), поэтому
+        абсолютный путь может отличаться от записанного в JSONL.
+
+        Args:
+            model_name: Логическое имя модели (ключ в ``sample.asr_results``).
+            jsonl_path: Путь к JSONL-файлу с результатами.
+
+        Returns:
+            Число сэмплов, для которых найдено совпадение.
+
+        Example::
+
+            ds = GolosDataset("data/golos", subset="crowd")
+            ds.load_model_results(
+                "GigaAM-v3-rnnt",
+                "plantain2asr/asr_data/golos/crowd/GigaAM-v3-rnnt_results.jsonl",
+            )
+        """
+        matched = 0
+        skipped = 0
+
+        with open(jsonl_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                audio = data.get("audio_path") or data.get("audio_filepath", "")
+                if not audio:
+                    continue
+
+                sid = Path(audio).name
+                sample = self._id_map.get(sid)
+                if sample is None:
+                    skipped += 1
+                    continue
+
+                sample.add_result(
+                    model_name=model_name,
+                    hypothesis=data.get("hypothesis", ""),
+                    duration=(data.get("processing_time") or data.get("time", 0.0)),
+                )
+                matched += 1
+
+        print(
+            f"[{self.name}] '{model_name}': matched {matched}/{len(self._samples)} samples"
+            + (f" ({skipped} unmatched)" if skipped else "")
+        )
+        return matched
 
     def load_results(self, paths: Union[str, List[str]]):
         """

@@ -20,19 +20,25 @@ from .reporting import (
     DiffSection,
 )
 
-# ── Analysis tools ───────────────────────────────────────────────────
-from .analysis import (
-    WordErrorAnalyzer,
-    DiffVisualizer,          # deprecated → prefer ReportServer
-    PerformanceAnalyzer,
-    BootstrapAnalyzer,
-    AgreementAnalyzer,
-    TopicAnalyzer,
-    HallucinationAnalyzer,
-    DurationAnalyzer,
-    NgramErrorAnalyzer,
-    CalibrationAnalyzer,
-)
+# ── Analysis tools (optional — requires pandas, scikit-learn, etc.) ──
+try:
+    from .analysis import (
+        WordErrorAnalyzer,
+        DiffVisualizer,
+        PerformanceAnalyzer,
+        BootstrapAnalyzer,
+        AgreementAnalyzer,
+        TopicAnalyzer,
+        HallucinationAnalyzer,
+        DurationAnalyzer,
+        NgramErrorAnalyzer,
+        CalibrationAnalyzer,
+    )
+except ImportError:
+    pass
 
-# ── Training ─────────────────────────────────────────────────────────
-from .train import TrainingConfig, GigaAMTrainer
+# ── Training (optional — requires torch + transformers) ──────────────
+try:
+    from .train import TrainingConfig, GigaAMTrainer
+except ImportError:
+    pass

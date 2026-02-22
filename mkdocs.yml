@@ -23,25 +23,52 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.top
+    - navigation.instant
     - search.highlight
     - search.suggest
     - content.code.copy
     - content.code.annotate
+    - announce.dismiss
+  icon:
+    repo: fontawesome/brands/github
 
 plugins:
   - search
-  - mkdocstrings:
-      handlers:
-        python:
-          options:
-            docstring_style: google
-            show_source: true
-            show_root_heading: true
+  - i18n:
+      docs_structure: suffix
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: ru
+          name: Русский
+          build: true
+          nav_translations:
+            Home: Главная
+            Quick Start: Быстрый старт
+            API Reference: Справочник API
+            Datasets: Датасеты
+            Models: Модели
+            Metrics: Метрики
+            Normalization: Нормализация
+            Reporting: Отчёты
+            Analysis: Анализ
+            Extending: Расширение
+            Overview: Обзор
+            Custom Normalizer: Свой нормализатор
+            Custom Model: Своя модель
+            Custom Metric: Своя метрика
+            Custom Report Section: Своя вкладка отчёта
 
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - admonition
@@ -49,6 +76,9 @@ markdown_extensions:
   - attr_list
   - md_in_html
   - tables
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 nav:
   - Home: index.md

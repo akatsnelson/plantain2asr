@@ -19,10 +19,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: |
-          pip install -e ".[analysis]"
-          pip install -r docs/requirements.txt
+      - name: Install MkDocs
+        run: pip install -r docs/requirements.txt
 
       - name: Build and deploy docs
         run: mkdocs gh-deploy --force

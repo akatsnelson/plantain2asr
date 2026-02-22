@@ -1,20 +1,55 @@
 # Extending plantain2asr
 
-plantain2asr is built around **four abstract base classes**. To extend the library you subclass one of them — no other files need to be changed.
+plantain2asr is designed to be extended. Every component — models, normalizers, metrics, report sections — is a subclass of a simple abstract base class.
 
-| What you want to add | Base class | Guide |
+```mermaid
+graph TD
+    Processor["Processor (ABC)"]
+    Processor --> BaseNormalizer
+    Processor --> BaseASRModel
+    Processor --> BaseMetric
+    BaseSection["BaseSection (ABC)"]
+
+    BaseNormalizer --> SimpleNormalizer
+    BaseNormalizer --> DagrusNormalizer
+    BaseNormalizer --> YourNormalizer["✨ YourNormalizer"]
+
+    BaseASRModel --> GigaAM
+    BaseASRModel --> Whisper
+    BaseASRModel --> YourModel["✨ YourModel"]
+
+    BaseMetric --> WER
+    BaseMetric --> CER
+    BaseMetric --> YourMetric["✨ YourMetric"]
+
+    BaseSection --> MetricsSection
+    BaseSection --> ErrorFrequencySection
+    BaseSection --> YourSection["✨ YourSection"]
+```
+
+---
+
+## The rule: implement the interface, get the pipeline
+
+Every component that subclasses `Processor` automatically works with `>>`:
+
+```python
+dataset >> YourNormalizer()   # ✅ works
+dataset >> YourModel()        # ✅ works
+dataset >> YourMetric()       # ✅ works
+```
+
+---
+
+## Four extension points
+
+| What to add | Base class | Guide |
 |---|---|---|
 | Text normalization rules | `BaseNormalizer` | [Custom Normalizer](custom_normalizer.md) |
 | A new ASR model | `BaseASRModel` | [Custom Model](custom_model.md) |
 | A new quality metric | `BaseMetric` | [Custom Metric](custom_metric.md) |
 | A new report tab | `BaseSection` | [Custom Report Section](custom_section.md) |
 
-All four base classes live in `plantain2asr` and can be imported directly:
-
-```python
-from plantain2asr import BaseNormalizer, BaseSection
-from plantain2asr.models.base import BaseASRModel
-from plantain2asr.metrics.base import BaseMetric
-```
-
-Every component integrates into the `>>` pipeline automatically once the base class contract is fulfilled.
+!!! tip
+    Start with the guide for the component type you need.
+    Each guide has a minimal example you can copy and adapt.

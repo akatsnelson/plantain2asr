@@ -2,7 +2,7 @@ __version__ = "0.1.3"
 __author__  = "plantain2asr contributors"
 
 # ── Core data types ──────────────────────────────────────────────────
-from .dataloaders import NeMoDataset, DagrusDataset, GolosDataset, AudioSample
+from .dataloaders import BaseASRDataset, NeMoDataset, DagrusDataset, GolosDataset, AudioSample
 
 # ── Pipeline building blocks ─────────────────────────────────────────
 from .models import Models

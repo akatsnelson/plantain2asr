@@ -1,171 +1,244 @@
-# 🌿 Plantain2ASR
+# 🌱 plantain2asr
 
-A benchmarking, comparison, and analysis framework for ASR models.
-"Applies" models to data, saves history, and heals your experiments.
+[![PyPI version](https://img.shields.io/pypi/v/plantain2asr.svg)](https://pypi.org/project/plantain2asr/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-github%20pages-blue.svg)](https://akatsnelson.github.io/plantain2asr)
 
-> **Russian ASR focus** — built-in support for GigaAM, Whisper-RU, Vosk, T-one, SaluteSpeech and others.
+**Benchmarking and analysis framework for Russian ASR models.**
+
+Pipeline API that lets you load a dataset, apply models, normalize text, compute metrics and explore results — all in a consistent `>>` interface.
+
+```python
+from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics, ReportServer
+
+ds   = GolosDataset("data/golos")          # auto-downloads if missing
+ds   >> Models.GigaAM_v3()                 # run inference
+norm = ds >> SimpleNormalizer()            # normalize text
+norm >> Metrics.composite()               # WER, CER, MER, WIL, WIP, Accuracy…
+norm.to_pandas()                           # pandas DataFrame for further analysis
+ReportServer(norm, audio_dir="data/golos").serve()  # interactive browser report
+```
 
 ---
 
-## 🚀 Features
-
-- **Unified data container (`AudioSample`)** — hypotheses, metrics, and timing live in one object.
-- **Smart caching** — script crashed at 99 %? Restart and it resumes from where it stopped.
-- **Adaptive batching** — GigaAM v3 and similar models saturate the GPU.
-- **One-liner analytics** — export to Pandas in a single call.
-- **Functional pipeline** — filter, sort, split, and process datasets with a fluent API.
-
----
-
-## 📦 Installation
+## Install
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/plantain2asr.git
-cd plantain2asr
+# Core — dataset loading + WER/CER metrics (no GPU required)
+pip install plantain2asr
 
-# 2. Install the core package (+ choose optional extras)
-pip install -e ".[gigaam,whisper,analysis]"
+# + GigaAM v2/v3 models
+pip install plantain2asr[gigaam]
 
-# Or install everything at once (heavy — includes all backends)
-pip install -e ".[all]"
-```
+# + Whisper (HuggingFace)
+pip install plantain2asr[whisper]
 
-### Optional extras
+# + deep analysis tools (pandas, bert-score, POS-analysis…)
+pip install plantain2asr[analysis]
 
-| Extra | What it installs |
-|-------|-----------------|
-| `gigaam` | `transformers`, `accelerate` — for GigaAM v2/v3 |
-| `whisper` | same as above — for Whisper (HuggingFace) |
-| `vosk` | `vosk` — for offline Kaldi-based Vosk |
-| `analysis` | `pandas`, `numpy`, `seaborn`, `scikit-learn`, `bert-score`, … |
-| `train` | `datasets`, `wandb` — for fine-tuning |
-| `all` | everything above |
-
----
-
-## 🛠 Quick Start
-
-### 1. Load a dataset and run models
-
-Your dataset must follow the **NeMo JSONL manifest** format — one JSON object
-per line with at minimum an `audio_filepath` key:
-
-```jsonl
-{"audio_filepath": "audio/sample_001.wav", "text": "привет мир", "duration": 2.1}
-{"audio_filepath": "audio/sample_002.wav", "text": "как дела", "duration": 1.8}
-```
-
-```python
-from plantain2asr.dataloaders import NeMoDataset
-from plantain2asr.models import Models
-
-# Load dataset (rootdir_path must contain manifest.jsonl)
-dataset = NeMoDataset(rootdir_path="data/my_dataset", name="MyDataset")
-
-# Create models (lazy-loaded — GPU/CPU is allocated on first use)
-models = [
-    Models.GigaAM_v3(device="cuda"),          # SberDevices GigaAM v3
-    Models.Whisper(device="cuda"),             # Whisper large-v3 RU
-    Models.Vosk(model_path="models/vosk-model-ru-0.42"),  # Offline Vosk
-]
-
-# Run with caching and metric computation
-# Results are incrementally saved to cache/MyDataset/{ModelName}.jsonl
-dataset.apply(models, batch_size=16, save_step=100, metrics_list=["wer", "cer"])
-
-# Save final unified results
-dataset.save_results("results/benchmark.jsonl")
-```
-
-### 2. Analyse results
-
-```python
-import pandas as pd
-import seaborn as sns
-
-df = dataset.to_pandas()
-
-# Per-model average metrics
-print(df.groupby("model")[["wer", "cer", "processing_time"]].mean())
-
-# Visualise
-sns.barplot(data=df, x="model", y="wer")
-```
-
-### 3. Recompute metrics after the fact
-
-```python
-# Ran models but forgot to compute metrics? No problem:
-dataset.evaluate_results(metrics_list=["wer", "cer", "accuracy"], force=True)
-```
-
-### 4. Functional pipeline
-
-```python
-from plantain2asr.utils.functional import Filter, Sort, Split
-
-# Fluent API
-train_ds, test_ds = (
-    dataset
-    >> Filter(lambda s: s.duration < 15)   # drop long utterances
-    >> Sort(lambda s: s.duration)           # sort by duration
-    >> Split(ratio=0.8, by="duration")      # stratified 80/20 split
-)
-
-train_ds.apply(Models.GigaAM_v3())
-```
-
-### 5. SaluteSpeech cloud API
-
-```python
-import os
-os.environ["SALUTE_AUTH_DATA"] = "<your_base64_key_from_sberdevices_studio>"
-
-from plantain2asr.models import Models
-model = Models.SaluteSpeech()  # reads key from env
+# Everything
+pip install plantain2asr[all]
 ```
 
 ---
 
-## 🏗 Architecture
+## Quick Start
 
-### `AudioSample`
-Core data container.
-- `id`, `audio_path`, `text`, `duration` — immutable input data.
-- `asr_results` — `Dict[ModelName, Result]` with `{hypothesis, processing_time, error, metrics: {wer: …}}`.
+### Load a dataset
 
-### `Models` factory
-Centralised access to all ASR models.
-- `Models.list()` — list available models.
-- `Models.GigaAM_v3(...)`, `Models.Whisper(...)`, `Models.Vosk(...)`, … — create an instance.
-- `Models.create("GigaAM_v3", device="cpu")` — create by string name.
+```python
+from plantain2asr import GolosDataset, DagrusDataset, NeMoDataset
 
-### `NeMoDataset` / `BaseASRDataset`
-Smart wrapper around a list of `AudioSample` objects.
-- `apply(models)` — main entry point, supports batching and caching.
-- `filter()`, `sort()`, `take()`, `random_split()`, `stratified_split()` — functional transformations.
-- `to_pandas()` — export to DataFrame.
-- `save_results()` / `load_results()` — persist and restore full result history.
+# GOLOS test set — auto-downloads on first run (~2.5 GB)
+ds = GolosDataset("data/golos")
 
-### Available Models
+# DaGRuS (Dagestani Russian Speech corpus)
+ds = DagrusDataset("data/dagrus")
 
-| Class | Backend | Notes |
-|-------|---------|-------|
-| `GigaAM_v3` | HuggingFace `ai-sage/GigaAM-v3` | e2e_rnnt / e2e_ctc / rnnt / ctc |
-| `GigaAM_v2` | HuggingFace `ai-sage/GigaAM` | v2_ctc / v2_rnnt |
-| `WhisperModel` | HuggingFace Transformers | any Whisper checkpoint |
-| `VoskModel` | Vosk (Kaldi) | fully offline, CPU |
-| `CanaryModel` | NVIDIA NeMo | requires `nemo_toolkit` |
-| `ToneModel` | HuggingFace `t-tech/T-one` | |
-| `SaluteSpeechModel` | Sber REST API | requires API key |
+# Any NeMo-format JSONL manifest
+ds = NeMoDataset("data/my_dataset")
+```
 
-### Available Metrics
+### Apply a model
 
-`wer`, `cer`, `mer`, `wil`, `wip`, `accuracy`, `length_ratio`, `idr`, `bert_score`, `pos_analysis`
+```python
+from plantain2asr import Models
+
+ds >> Models.GigaAM_v3()                          # GigaAM v3 e2e-RNNT (default)
+ds >> Models.GigaAM_v3(model_name="e2e_ctc")      # GigaAM v3 e2e-CTC
+ds >> Models.GigaAM_v3(model_name="rnnt")         # GigaAM v3 RNNT
+ds >> Models.GigaAM_v2(model_name="v2_rnnt")      # GigaAM v2
+ds >> Models.Whisper()                             # Whisper large-v3 RU
+ds >> Models.Tone()                                # T-one RussianTone
+ds >> Models.Vosk(model_path="models/vosk-ru")    # Vosk (offline, CPU)
+ds >> Models.SaluteSpeech()                        # SaluteSpeech API
+```
+
+Results accumulate in `sample.asr_results` — run multiple models on the same dataset to compare them.
+
+### Normalize text
+
+```python
+from plantain2asr import SimpleNormalizer, DagrusNormalizer
+
+# General Russian normalization: lowercase, strip punctuation, ё→е
+norm = ds >> SimpleNormalizer()
+
+# DaGRuS-specific: handles annotations [laugh], fillers (ага, угу), colloquialisms
+norm = ds >> DagrusNormalizer(remove_fillers=False, strip_punctuation=True)
+```
+
+Normalization creates a new dataset **view** — the original `ds` is untouched.
+
+### Compute metrics
+
+```python
+from plantain2asr import Metrics
+
+norm >> Metrics.composite()   # WER, CER, MER, WIL, WIP, Accuracy, IDR, LengthRatio
+```
+
+Metrics are stored per-sample in `sample.asr_results[model]["metrics"]`.
+
+### Explore results
+
+```python
+# Pandas DataFrame — one row per (sample, model)
+df = norm.to_pandas()
+df.groupby("model")[["WER", "CER", "Accuracy"]].mean().sort_values("WER")
+
+# Word-level error breakdown
+from plantain2asr import WordErrorAnalyzer
+norm >> WordErrorAnalyzer(model_name="GigaAM-v3-e2e-rnnt", top_n=20)
+
+# Interactive browser report: metrics table + error frequency + diff view
+from plantain2asr import ReportServer
+ReportServer(norm, audio_dir="data/golos").serve()
+```
+
+### Load pre-computed results
+
+Run inference on a GPU machine, transfer JSONL files, load here:
+
+```python
+ds.load_model_results("GigaAM-v3-rnnt", "results/GigaAM-v3-rnnt_results.jsonl")
+```
+
+Format: `{"audio_path": "/any/path/file.wav", "hypothesis": "text", "processing_time": 1.23}`
 
 ---
 
-## 📄 License
+## Filter and slice
+
+```python
+# Standard pipeline methods
+short = ds.filter(lambda s: s.duration < 5.0)
+crowd = ds.filter(lambda s: s.meta["subset"] == "crowd")
+top10 = ds.take(10)
+```
+
+---
+
+## Extending
+
+plantain2asr is built around four abstract base classes. Subclass any of them to add your own components.
+
+### Custom normalizer
+
+```python
+from plantain2asr import BaseNormalizer
+
+class MyNormalizer(BaseNormalizer):
+    def normalize_ref(self, text: str) -> str:
+        return text.lower().replace("ё", "е")
+
+    def normalize_hyp(self, text: str) -> str:
+        return text.lower().replace("ё", "е")
+
+norm = ds >> MyNormalizer()
+```
+
+### Custom model
+
+```python
+from plantain2asr.models.base import BaseASRModel
+
+class MyModel(BaseASRModel):
+    @property
+    def name(self) -> str:
+        return "MyModel"
+
+    def transcribe(self, audio_path: str) -> str:
+        # your inference logic
+        return "transcribed text"
+
+ds >> MyModel()
+```
+
+### Custom metric
+
+```python
+from plantain2asr.metrics.base import BaseMetric
+
+class SyllableErrorRate(BaseMetric):
+    @property
+    def name(self) -> str:
+        return "SER"
+
+    def calculate(self, reference: str, hypothesis: str) -> float:
+        # your metric logic
+        ref_syls = sum(1 for c in reference if c in "аеёиоуыэюя")
+        hyp_syls = sum(1 for c in hypothesis if c in "аеёиоуыэюя")
+        return abs(ref_syls - hyp_syls) / max(ref_syls, 1) * 100
+
+norm >> SyllableErrorRate()
+```
+
+### Custom report section
+
+```python
+from plantain2asr import BaseSection
+
+class LengthSection(BaseSection):
+    @property
+    def name(self) -> str:   return "length"
+    @property
+    def title(self) -> str:  return "Length Stats"
+    @property
+    def icon(self) -> str:   return "📏"
+
+    def compute(self, dataset) -> dict:
+        return {
+            s.id: {"words": len(s.text.split())}
+            for s in dataset
+        }
+
+    def js_function(self) -> str:
+        return "function render_length() { /* your JS */ }"
+
+from plantain2asr import ReportServer
+ReportServer(norm, sections=[LengthSection()]).serve()
+```
+
+See [full extending guide](https://plantain2asr.readthedocs.io/extending/) for complete examples.
+
+---
+
+## Supported models
+
+| Model | Extra | Device |
+|---|---|---|
+| GigaAM v3 (e2e-rnnt, e2e-ctc, rnnt, ctc) | `gigaam` | CUDA / MPS / CPU |
+| GigaAM v2 (v2-rnnt, v2-ctc) | `gigaam` | CUDA / MPS / CPU |
+| Whisper large-v3 RU (HuggingFace) | `whisper` | CUDA / MPS / CPU |
+| T-one RussianTone | `gigaam` | CUDA |
+| Vosk | `vosk` | CPU |
+| NVIDIA Canary | `canary` | CUDA |
+| SaluteSpeech API | — | cloud |
+
+---
+
+## License
 
 MIT

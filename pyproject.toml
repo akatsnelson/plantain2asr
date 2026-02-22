@@ -1,0 +1,102 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plantain2asr"
+version = "0.1.0"
+description = "A benchmarking and analysis framework for Russian ASR models"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+
+keywords = ["asr", "speech-recognition", "benchmarking", "nlp", "russian", "wer"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+# Core: minimum to load datasets and compute WER/CER metrics (no GPU required)
+dependencies = [
+    "jiwer>=3.0",
+    "tqdm>=4.64",
+    "requests>=2.28",
+]
+
+[project.optional-dependencies]
+
+# pip install plantain2asr[gigaam]
+gigaam = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "accelerate>=0.27",
+    "librosa>=0.10",
+]
+
+# pip install plantain2asr[whisper]
+whisper = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "accelerate>=0.27",
+    "librosa>=0.10",
+]
+
+# pip install plantain2asr[vosk]
+vosk = [
+    "vosk>=0.3.45",
+]
+
+# pip install plantain2asr[canary]
+# Note: nemo_toolkit is heavy — install manually if needed
+canary = [
+    "nemo_toolkit[asr]>=1.23",
+]
+
+# pip install plantain2asr[analysis]
+analysis = [
+    "pandas>=1.5",
+    "numpy>=1.23",
+    "matplotlib>=3.6",
+    "seaborn>=0.12",
+    "scikit-learn>=1.2",
+    "pymorphy3>=1.0",
+    "gensim>=4.3",
+    "bert-score>=0.3.13",
+    "torchmetrics>=1.0",
+]
+
+# pip install plantain2asr[train]
+train = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "accelerate>=0.27",
+    "datasets>=2.14",
+    "wandb>=0.16",
+]
+
+# pip install plantain2asr[all]
+all = [
+    "plantain2asr[gigaam,whisper,vosk,analysis,train]",
+]
+
+[project.urls]
+Homepage = "https://github.com/akatsnelson/plantain2asr"
+Documentation = "https://akatsnelson.github.io/plantain2asr"
+Issues = "https://github.com/akatsnelson/plantain2asr/issues"
+
+[tool.setuptools.packages.find]
+where   = ["."]
+include = ["plantain2asr*"]
+exclude = [
+    "plantain2asr/asr_data*",
+    "plantain2asr/cache*",
+    "plantain2asr/checkpoints*",
+]

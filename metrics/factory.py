@@ -10,8 +10,12 @@ from .simple.wip import WIP
 from .simple.accuracy import Accuracy
 from .simple.idr import IDR
 from .simple.length_ratio import LengthRatio
-from .complex.pos_analysis import PosErrorAnalysis
-from .complex.bert_score import BERTScore
+try:
+    from .complex.pos_analysis import PosErrorAnalysis
+    from .complex.bert_score import BERTScore
+    _HAS_COMPLEX = True
+except ImportError:
+    _HAS_COMPLEX = False
 
 if TYPE_CHECKING:
     from ..normalization.base import BaseNormalizer
@@ -38,8 +42,10 @@ class Metrics:
         "accuracy":     Accuracy,
         "idr":          IDR,
         "length_ratio": LengthRatio,
-        "pos_analysis": PosErrorAnalysis,
-        "bert_score":   BERTScore,
+        **({
+            "pos_analysis": PosErrorAnalysis,
+            "bert_score":   BERTScore,
+        } if _HAS_COMPLEX else {}),
     }
 
     @classmethod
@@ -109,6 +115,8 @@ class Metrics:
         return Accuracy(**kwargs)
 
     @staticmethod
-    def BERTScore(model_name: str = "bert-base-multilingual-cased", **kwargs) -> BERTScore:
+    def BERTScore(model_name: str = "bert-base-multilingual-cased", **kwargs):
         """Семантическая метрика через BERT. Тяжёлая — загружает модель."""
-        return BERTScore(model_name=model_name, **kwargs)
+        if not _HAS_COMPLEX:
+            raise ImportError("BERTScore requires: pip install plantain2asr[analysis]")
+        return BERTScore(model_name=model_name, **kwargs)  # noqa: F821

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plantain2asr"
-version = "0.1.2"
+version = "0.1.3"
 description = "A benchmarking and analysis framework for Russian ASR models"
 readme = "README.md"
 license = { text = "MIT" }
@@ -92,14 +92,5 @@ Homepage = "https://github.com/akatsnelson/plantain2asr"
 Documentation = "https://akatsnelson.github.io/plantain2asr"
 Issues = "https://github.com/akatsnelson/plantain2asr/issues"
 
-[tool.setuptools]
-package-dir = {"" = ".."}
-
-[tool.setuptools.packages.find]
-where   = [".."]
-include = ["plantain2asr*"]
-exclude = [
-    "plantain2asr.asr_data*",
-    "plantain2asr.cache*",
-    "plantain2asr.checkpoints*",
-]
+# Package discovery is handled by setup.py (needed due to non-standard layout
+# where the git repo root itself is the plantain2asr package directory)

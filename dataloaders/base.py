@@ -6,7 +6,11 @@ import logging
 import math
 import random
 from typing import Iterator, List, TYPE_CHECKING, Union, Optional, Callable, Any, Tuple
-from torch.utils.data import Dataset
+try:
+    from torch.utils.data import Dataset
+except ImportError:
+    class Dataset:  # minimal stub when torch is not installed
+        pass
 from pathlib import Path
 from .types import AudioSample
 

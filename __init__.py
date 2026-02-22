@@ -2,7 +2,7 @@ __version__ = "0.1.4"
 __author__  = "Artem Katsnelson"
 
 # ── Core data types ──────────────────────────────────────────────────
-from .dataloaders import BaseASRDataset, NeMoDataset, DagrusDataset, GolosDataset, AudioSample
+from .dataloaders import BaseASRDataset, NeMoDataset, DagrusDataset, GolosDataset, RuDevicesDataset, AudioSample
 
 # ── Pipeline building blocks ─────────────────────────────────────────
 from .models import Models

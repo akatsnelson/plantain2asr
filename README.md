@@ -1,4 +1,4 @@
-# 🌱 plantain2asr
+# plantain2asr
 
 [![PyPI version](https://img.shields.io/pypi/v/plantain2asr.svg)](https://pypi.org/project/plantain2asr/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -7,16 +7,15 @@
 
 **Benchmarking and analysis framework for Russian ASR models.**
 
-Pipeline API that lets you load a dataset, apply models, normalize text, compute metrics and explore results — all in a consistent `>>` interface.
+Pipeline API: load a dataset, apply models, normalize text, compute metrics, explore results — all in one consistent `>>` interface.
 
 ```python
-from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics, ReportServer
+from plantain2asr import GolosDataset, Models, DagrusNormalizer, Metrics, ReportServer
 
 ds   = GolosDataset("data/golos")          # auto-downloads if missing
-ds   >> Models.GigaAM_v3()                 # run inference
-norm = ds >> SimpleNormalizer()            # normalize text
+ds   >> Models.GigaAM_v3()                 # run inference (results cached)
+norm = ds >> DagrusNormalizer()            # normalize text — creates a view
 norm >> Metrics.composite()               # WER, CER, MER, WIL, WIP, Accuracy…
-norm.to_pandas()                           # pandas DataFrame for further analysis
 ReportServer(norm, audio_dir="data/golos").serve()  # interactive browser report
 ```
 
@@ -28,7 +27,7 @@ ReportServer(norm, audio_dir="data/golos").serve()  # interactive browser report
 # Core — dataset loading + WER/CER metrics (no GPU required)
 pip install plantain2asr
 
-# + GigaAM v2/v3 models
+# + GigaAM v2/v3 and T-one models
 pip install plantain2asr[gigaam]
 
 # + Whisper (HuggingFace)
@@ -37,7 +36,7 @@ pip install plantain2asr[whisper]
 # + deep analysis tools (pandas, bert-score, POS-analysis…)
 pip install plantain2asr[analysis]
 
-# Everything
+# Everything at once
 pip install plantain2asr[all]
 ```
 
@@ -65,31 +64,39 @@ ds = NeMoDataset("data/my_dataset")
 ```python
 from plantain2asr import Models
 
-ds >> Models.GigaAM_v3()                          # GigaAM v3 e2e-RNNT (default)
-ds >> Models.GigaAM_v3(model_name="e2e_ctc")      # GigaAM v3 e2e-CTC
-ds >> Models.GigaAM_v3(model_name="rnnt")         # GigaAM v3 RNNT
-ds >> Models.GigaAM_v2(model_name="v2_rnnt")      # GigaAM v2
-ds >> Models.Whisper()                             # Whisper large-v3 RU
-ds >> Models.Tone()                                # T-one RussianTone
-ds >> Models.Vosk(model_path="models/vosk-ru")    # Vosk (offline, CPU)
-ds >> Models.SaluteSpeech()                        # SaluteSpeech API
+model = Models.GigaAM_v3()                        # GigaAM v3 e2e-RNNT (default)
+ds >> model
 ```
 
-Results accumulate in `sample.asr_results` — run multiple models on the same dataset to compare them.
+Results accumulate in `sample.asr_results[model.name]`. Run multiple models on the same dataset to compare side by side.
+
+Available models:
+
+| Call | `model.name` stored | Extra | Device |
+|---|---|---|---|
+| `Models.GigaAM_v3()` | `GigaAM-v3-e2e_rnnt` | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="e2e_ctc")` | `GigaAM-v3-e2e_ctc` | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="rnnt")` | `GigaAM-v3-rnnt` | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v2(model_name="v2_rnnt")` | `GigaAM-v2_rnnt` | `gigaam` | CUDA / MPS / CPU |
+| `Models.Whisper()` | `Whisper-whisper-large-v3-ru-podlodka` | `whisper` | CUDA / MPS / CPU |
+| `Models.Tone()` | `T-One` | `gigaam` | CUDA |
+| `Models.Vosk(model_path=…)` | `Vosk` | `vosk` | CPU |
+| `Models.Canary()` | `Canary-1B` | `canary` | CUDA |
+| `Models.SaluteSpeech()` | `SaluteSpeech` | — | cloud |
 
 ### Normalize text
 
 ```python
 from plantain2asr import SimpleNormalizer, DagrusNormalizer
 
-# General Russian normalization: lowercase, strip punctuation, ё→е
+# General Russian: lowercase, strip punctuation, ё→е
 norm = ds >> SimpleNormalizer()
 
-# DaGRuS-specific: handles annotations [laugh], fillers (ага, угу), colloquialisms
-norm = ds >> DagrusNormalizer(remove_fillers=False, strip_punctuation=True)
+# DaGRuS-specific: handles [laugh], fillers (ага, угу), colloquialisms
+norm = ds >> DagrusNormalizer()
 ```
 
-Normalization creates a new dataset **view** — the original `ds` is untouched.
+Normalization creates a new dataset **view** — `ds` stays untouched.
 
 ### Compute metrics
 
@@ -99,18 +106,12 @@ from plantain2asr import Metrics
 norm >> Metrics.composite()   # WER, CER, MER, WIL, WIP, Accuracy, IDR, LengthRatio
 ```
 
-Metrics are stored per-sample in `sample.asr_results[model]["metrics"]`.
-
 ### Explore results
 
 ```python
 # Pandas DataFrame — one row per (sample, model)
 df = norm.to_pandas()
 df.groupby("model")[["WER", "CER", "Accuracy"]].mean().sort_values("WER")
-
-# Word-level error breakdown
-from plantain2asr import WordErrorAnalyzer
-norm >> WordErrorAnalyzer(model_name="GigaAM-v3-e2e-rnnt", top_n=20)
 
 # Interactive browser report: metrics table + error frequency + diff view
 from plantain2asr import ReportServer
@@ -122,27 +123,27 @@ ReportServer(norm, audio_dir="data/golos").serve()
 Run inference on a GPU machine, transfer JSONL files, load here:
 
 ```python
-ds.load_model_results("GigaAM-v3-rnnt", "results/GigaAM-v3-rnnt_results.jsonl")
+ds.load_model_results("GigaAM-v3-e2e_rnnt", "results/GigaAM-v3-e2e_rnnt_results.jsonl")
 ```
 
-Format: `{"audio_path": "/any/path/file.wav", "hypothesis": "text", "processing_time": 1.23}`
+JSONL format: one JSON object per line — `{"audio_path": "…", "hypothesis": "…", "time": 1.23}`
 
 ---
 
 ## Filter and slice
 
 ```python
-# Standard pipeline methods
-short = ds.filter(lambda s: s.duration < 5.0)
-crowd = ds.filter(lambda s: s.meta["subset"] == "crowd")
-top10 = ds.take(10)
+short    = ds.filter(lambda s: s.duration < 5.0)
+crowd    = ds.filter(lambda s: s.meta["subset"] == "crowd")
+farfield = ds.filter(lambda s: s.meta["subset"] == "farfield")
+top10    = ds.take(10)
 ```
 
 ---
 
 ## Extending
 
-plantain2asr is built around four abstract base classes. Subclass any of them to add your own components.
+plantain2asr is built around four abstract base classes — subclass any of them.
 
 ### Custom normalizer
 
@@ -170,7 +171,6 @@ class MyModel(BaseASRModel):
         return "MyModel"
 
     def transcribe(self, audio_path: str) -> str:
-        # your inference logic
         return "transcribed text"
 
 ds >> MyModel()
@@ -187,7 +187,6 @@ class SyllableErrorRate(BaseMetric):
         return "SER"
 
     def calculate(self, reference: str, hypothesis: str) -> float:
-        # your metric logic
         ref_syls = sum(1 for c in reference if c in "аеёиоуыэюя")
         hyp_syls = sum(1 for c in hypothesis if c in "аеёиоуыэюя")
         return abs(ref_syls - hyp_syls) / max(ref_syls, 1) * 100
@@ -198,7 +197,7 @@ norm >> SyllableErrorRate()
 ### Custom report section
 
 ```python
-from plantain2asr import BaseSection
+from plantain2asr import BaseSection, ReportServer
 
 class LengthSection(BaseSection):
     @property
@@ -209,36 +208,18 @@ class LengthSection(BaseSection):
     def icon(self) -> str:   return "📏"
 
     def compute(self, dataset) -> dict:
-        return {
-            s.id: {"words": len(s.text.split())}
-            for s in dataset
-        }
+        return {s.id: {"words": len(s.text.split())} for s in dataset}
 
     def js_function(self) -> str:
         return "function render_length() { /* your JS */ }"
 
-from plantain2asr import ReportServer
 ReportServer(norm, sections=[LengthSection()]).serve()
 ```
 
-See [full extending guide](https://plantain2asr.readthedocs.io/extending/) for complete examples.
-
----
-
-## Supported models
-
-| Model | Extra | Device |
-|---|---|---|
-| GigaAM v3 (e2e-rnnt, e2e-ctc, rnnt, ctc) | `gigaam` | CUDA / MPS / CPU |
-| GigaAM v2 (v2-rnnt, v2-ctc) | `gigaam` | CUDA / MPS / CPU |
-| Whisper large-v3 RU (HuggingFace) | `whisper` | CUDA / MPS / CPU |
-| T-one RussianTone | `gigaam` | CUDA |
-| Vosk | `vosk` | CPU |
-| NVIDIA Canary | `canary` | CUDA |
-| SaluteSpeech API | — | cloud |
+Full documentation: [akatsnelson.github.io/plantain2asr](https://akatsnelson.github.io/plantain2asr)
 
 ---
 
 ## License
 
-MIT
+MIT — Artem Katsnelson

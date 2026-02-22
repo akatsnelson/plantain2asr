@@ -1,5 +1,5 @@
 __version__ = "0.1.4"
-__author__  = "plantain2asr contributors"
+__author__  = "Artem Katsnelson"
 
 # ── Core data types ──────────────────────────────────────────────────
 from .dataloaders import BaseASRDataset, NeMoDataset, DagrusDataset, GolosDataset, AudioSample

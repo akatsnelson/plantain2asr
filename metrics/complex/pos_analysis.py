@@ -1,4 +1,8 @@
-import pymorphy2
+try:
+    import pymorphy3 as pymorphy2  # preferred
+except ImportError:
+    import pymorphy2               # fallback for older environments
+
 import inspect
 from collections import namedtuple
 

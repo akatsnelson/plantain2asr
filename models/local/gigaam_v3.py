@@ -35,7 +35,8 @@ class GigaAMv3(BaseASRModel):
         self.model = AutoModel.from_pretrained(
             "ai-sage/GigaAM-v3",
             revision=model_name,
-            trust_remote_code=True
+            trust_remote_code=True,
+            low_cpu_mem_usage=False,  # torchaudio.MelScale не совместима с meta tensors
         )
         self.model = self.model.to(self.device)
         self.model.eval()

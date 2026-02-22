@@ -1,4 +1,4 @@
-# plantain2asr
+# 🌱 plantain2asr
 
 [![PyPI version](https://img.shields.io/pypi/v/plantain2asr.svg)](https://pypi.org/project/plantain2asr/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)

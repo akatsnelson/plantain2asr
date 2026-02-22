@@ -36,7 +36,8 @@ class GigaAMv3(BaseASRModel):
             "ai-sage/GigaAM-v3",
             revision=model_name,
             trust_remote_code=True,
-            low_cpu_mem_usage=False,  # torchaudio.MelScale не совместима с meta tensors
+            low_cpu_mem_usage=False,  # torchaudio.MelScale несовместима с meta tensors
+            device_map=None,          # отключает авто-определение device (тоже триггерит meta)
         )
         self.model = self.model.to(self.device)
         self.model.eval()

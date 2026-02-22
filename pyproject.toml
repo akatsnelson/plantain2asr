@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plantain2asr"
-version = "0.1.1"
+version = "0.1.2"
 description = "A benchmarking and analysis framework for Russian ASR models"
 readme = "README.md"
 license = { text = "MIT" }
@@ -92,11 +92,14 @@ Homepage = "https://github.com/akatsnelson/plantain2asr"
 Documentation = "https://akatsnelson.github.io/plantain2asr"
 Issues = "https://github.com/akatsnelson/plantain2asr/issues"
 
+[tool.setuptools]
+package-dir = {"" = ".."}
+
 [tool.setuptools.packages.find]
-where   = ["."]
+where   = [".."]
 include = ["plantain2asr*"]
 exclude = [
-    "plantain2asr/asr_data*",
-    "plantain2asr/cache*",
-    "plantain2asr/checkpoints*",
+    "plantain2asr.asr_data*",
+    "plantain2asr.cache*",
+    "plantain2asr.checkpoints*",
 ]

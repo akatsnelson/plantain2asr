@@ -55,12 +55,7 @@ class GigaAMv2(BaseASRModel):
         return self._name
 
     def transcribe(self, audio_path: Union[str, Path]) -> str:
-        return self.transcribe_batch([audio_path])[0]
-
-    def transcribe_batch(self, audio_paths: List[Union[str, Path]]) -> List[str]:
-        # GigaAM поддерживает батчинг "из коробки" через transcribe
-        paths = [str(p) for p in audio_paths]
-        
-        # v2 API может отличаться, проверим типичный вызов
-        # Обычно: model.transcribe(paths) -> List[str]
-        return self.model.transcribe(paths)
+        result = self.model.transcribe(str(audio_path))
+        if isinstance(result, list):
+            return result[0] if result else ""
+        return str(result)

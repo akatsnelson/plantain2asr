@@ -43,20 +43,24 @@ def _gigaam_v3_compat():
     _taf.melscale_fbanks = _safe_fbanks
 
     # --- Патч 2: all_tied_weights_keys ---
-    _orig_finalize = _tmu.PreTrainedModel._finalize_model_loading
+    # _finalize_model_loading удалили в новых версиях transformers — патч опциональный
+    _has_finalize = hasattr(_tmu.PreTrainedModel, "_finalize_model_loading")
+    if _has_finalize:
+        _orig_finalize = _tmu.PreTrainedModel._finalize_model_loading
 
-    def _safe_finalize(model, load_config, loading_info):
-        if not hasattr(model, "all_tied_weights_keys"):
-            model.all_tied_weights_keys = {}
-        return _orig_finalize(model, load_config, loading_info)
+        def _safe_finalize(model, load_config, loading_info):
+            if not hasattr(model, "all_tied_weights_keys"):
+                model.all_tied_weights_keys = {}
+            return _orig_finalize(model, load_config, loading_info)
 
-    _tmu.PreTrainedModel._finalize_model_loading = staticmethod(_safe_finalize)
+        _tmu.PreTrainedModel._finalize_model_loading = staticmethod(_safe_finalize)
 
     try:
         yield
     finally:
         _taf.melscale_fbanks = _orig_fbanks
-        _tmu.PreTrainedModel._finalize_model_loading = _orig_finalize
+        if _has_finalize:
+            _tmu.PreTrainedModel._finalize_model_loading = _orig_finalize
 
 class GigaAMv3(BaseASRModel):
     """

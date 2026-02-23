@@ -29,16 +29,17 @@ class GigaAMv2(BaseASRModel):
         
         print(f"⏳ Loading {self._name} on {self.device}...")
 
-        # PyTorch >= 2.6 требует явного разрешения omegaconf-типов в чекпоинте
-        try:
-            import torch.serialization as _ts
-            from omegaconf import DictConfig, ListConfig
-            _ts.add_safe_globals([DictConfig, ListConfig])
-        except Exception:
-            pass
+        # PyTorch >= 2.6: weights_only=True по умолчанию, но чекпоинт GigaAM v2
+        # содержит omegaconf-объекты — патчим torch.load на время загрузки.
+        _orig_load = torch.load
+
+        def _load_unsafe(*args, **kwargs):
+            kwargs.setdefault("weights_only", False)
+            return _orig_load(*args, **kwargs)
+
+        torch.load = _load_unsafe
 
         # cuDNN LSTM flatten_parameters несовместимо с CUDA 13.x.
-        # Отключаем cuDNN на время загрузки — на inference не влияет критично.
         cudnn_was_enabled = torch.backends.cudnn.enabled
         torch.backends.cudnn.enabled = False
         try:
@@ -46,6 +47,7 @@ class GigaAMv2(BaseASRModel):
             self.model = self.model.to(self.device)
             self.model.eval()
         finally:
+            torch.load = _orig_load
             torch.backends.cudnn.enabled = cudnn_was_enabled
 
     @property

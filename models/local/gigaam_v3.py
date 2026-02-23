@@ -1,10 +1,32 @@
 import torch
 import os
+from contextlib import nullcontext, contextmanager
 from typing import Union, List, Optional, Tuple, Any
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from ..base import BaseASRModel
 from transformers import AutoModel, AutoProcessor
+
+
+@contextmanager
+def _no_init_empty_weights():
+    """
+    Патч init_empty_weights → nullcontext на время загрузки GigaAM v3.
+
+    torchaudio.MelScale вычисляет mel-filterbank в __init__ и вызывает .item()
+    на тензоре-буфере. Это падает, если transformers активировал контекст
+    init_empty_weights (meta tensors). Патчим на уровне модуля, чтобы обойти
+    это вне зависимости от версии transformers/accelerate.
+    """
+    import transformers.modeling_utils as _tmu
+    _orig = getattr(_tmu, "init_empty_weights", None)
+    if _orig is not None:
+        _tmu.init_empty_weights = nullcontext
+    try:
+        yield
+    finally:
+        if _orig is not None:
+            _tmu.init_empty_weights = _orig
 
 class GigaAMv3(BaseASRModel):
     """
@@ -32,13 +54,14 @@ class GigaAMv3(BaseASRModel):
         
         print(f"📥 Loading GigaAM-v3 ({model_name}) from HF on {self.device}...")
         
-        self.model = AutoModel.from_pretrained(
-            "ai-sage/GigaAM-v3",
-            revision=model_name,
-            trust_remote_code=True,
-            low_cpu_mem_usage=False,  # torchaudio.MelScale несовместима с meta tensors
-            device_map=None,          # отключает авто-определение device (тоже триггерит meta)
-        )
+        with _no_init_empty_weights():
+            self.model = AutoModel.from_pretrained(
+                "ai-sage/GigaAM-v3",
+                revision=model_name,
+                trust_remote_code=True,
+                low_cpu_mem_usage=False,
+                device_map=None,
+            )
         self.model = self.model.to(self.device)
         self.model.eval()
         

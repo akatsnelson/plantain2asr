@@ -1,5 +1,8 @@
+import io
 import logging
+import os
 import torch
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Union, List
 from ..base import BaseASRModel
@@ -10,15 +13,46 @@ except ImportError:
     EncDecMultiTaskModel = None
 
 
-def _suppress_nemo_logs():
-    for name in logging.root.manager.loggerDict:
-        if "nemo" in name.lower():
-            logging.getLogger(name).setLevel(logging.ERROR)
+@contextmanager
+def _quiet_nemo():
+    """Глушим весь вывод NeMo: и logging, и stderr-спам."""
+    # Поднимаем уровень всех nemo-логгеров
+    nemo_loggers = [
+        logging.getLogger(n)
+        for n in list(logging.root.manager.loggerDict)
+        if "nemo" in n.lower()
+    ]
+    old_levels = [(lg, lg.level) for lg in nemo_loggers]
+    for lg in nemo_loggers:
+        lg.setLevel(logging.CRITICAL)
+
+    # Глушим nemo.utils.logging напрямую
     try:
-        from nemo.utils import logging as nemo_logging
-        nemo_logging.setLevel(logging.ERROR)
+        from nemo.utils import logging as _nlog
+        old_nlog = _nlog.logger.level
+        _nlog.logger.setLevel(logging.CRITICAL)
     except Exception:
-        pass
+        old_nlog = None
+
+    # Перехватываем stderr (NeMo пишет туда минуя logging)
+    old_stderr = os.dup(2)
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, 2)
+    os.close(devnull)
+
+    try:
+        yield
+    finally:
+        os.dup2(old_stderr, 2)
+        os.close(old_stderr)
+        for lg, lv in old_levels:
+            lg.setLevel(lv)
+        if old_nlog is not None:
+            try:
+                from nemo.utils import logging as _nlog
+                _nlog.logger.setLevel(old_nlog)
+            except Exception:
+                pass
 
 
 class CanaryModel(BaseASRModel):
@@ -31,45 +65,30 @@ class CanaryModel(BaseASRModel):
         self.device = device
         self._name = "Canary-1B"
 
-        _suppress_nemo_logs()
         print(f"📥 Loading Canary-1B on {self.device}...")
-        self.model = EncDecMultiTaskModel.from_pretrained(model_name=model_name)
-        self.model = self.model.to(self.device)
-        self.model.eval()
-
-        # Подавляем логи после загрузки (NeMo добавляет хендлеры в __init__)
-        _suppress_nemo_logs()
+        with _quiet_nemo():
+            self.model = EncDecMultiTaskModel.from_pretrained(model_name=model_name)
+            self.model = self.model.to(self.device)
+            self.model.eval()
+        print(f"✅ Canary-1B loaded")
 
     @property
     def name(self) -> str:
         return self._name
 
-    def _do_transcribe(self, paths: List[str]) -> List[str]:
-        _suppress_nemo_logs()
-        results = self.model.transcribe(
-            paths,
-            batch_size=1,
-            task="asr",
-            source_lang="ru",
-            target_lang="ru",
-            pnc="no",
-        )
-        if not results:
-            return [""] * len(paths)
-        # NeMo может вернуть список строк или список Hypothesis
-        out = []
-        for r in results:
-            if isinstance(r, str):
-                out.append(r)
-            elif hasattr(r, "text"):
-                out.append(r.text)
-            else:
-                out.append(str(r))
-        return out
-
     def transcribe(self, audio_path: Union[str, Path]) -> str:
-        res = self._do_transcribe([str(audio_path)])
-        return res[0] if res else ""
-
-    def transcribe_batch(self, audio_paths: List[Union[str, Path]]) -> List[str]:
-        return self._do_transcribe([str(p) for p in audio_paths])
+        with _quiet_nemo():
+            results = self.model.transcribe(
+                [str(audio_path)],
+                batch_size=1,
+                task="asr",
+                source_lang="ru",
+                target_lang="ru",
+                pnc="no",
+            )
+        if not results:
+            return ""
+        r = results[0]
+        if isinstance(r, str):
+            return r
+        return getattr(r, "text", str(r))

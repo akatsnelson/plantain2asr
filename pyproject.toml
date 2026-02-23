@@ -36,6 +36,7 @@ dependencies = [
 # pip install plantain2asr[tone]
 tone = [
     "tone @ git+https://github.com/voicekit-team/T-one.git",
+    "miniaudio>=1.2",
     "onnxruntime-gpu>=1.16",
 ]
 

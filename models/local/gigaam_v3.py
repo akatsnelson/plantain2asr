@@ -9,39 +9,40 @@ from transformers import AutoModel, AutoProcessor
 
 
 @contextmanager
-def _no_init_empty_weights():
+def _torchaudio_meta_safe():
     """
-    Патч init_empty_weights → nullcontext на время загрузки GigaAM v3.
+    Патч torchaudio.functional.melscale_fbanks, чтобы она не падала
+    внутри meta-tensor контекста (init_empty_weights).
 
-    torchaudio.MelScale вычисляет mel-filterbank в __init__ и вызывает .item()
-    на тензоре-буфере. Это падает если transformers активировал meta-tensor
-    контекст через init_empty_weights.
+    Проблема: transformers >= 4.43 запускает __init__ модели внутри
+    init_empty_weights(), который делает все тензоры «мета».
+    torchaudio.MelScale вычисляет mel-filterbank и вызывает .item() на буфере —
+    это падает на мета-тензоре.
 
-    transformers делает СВЕЖИЙ импорт внутри from_pretrained:
-        from accelerate import init_empty_weights  # локальная переменная!
-    Поэтому нужно патчить accelerate, а не transformers.modeling_utils.
+    Решение: перехватываем ошибку и возвращаем нулевой CPU-тензор.
+    Буфер `fb` всё равно перезаписывается реальными весами из чекпойнта
+    через load_state_dict — так что dummy-значение при инициализации безопасно.
     """
-    saved = []
-    # Патчим все возможные места откуда transformers может импортировать
-    for mod_name, attr in [
-        ("accelerate.big_modeling", "init_empty_weights"),
-        ("accelerate",              "init_empty_weights"),
-        ("transformers.modeling_utils", "init_empty_weights"),
-    ]:
+    import torchaudio.functional as _taf
+
+    _orig = _taf.melscale_fbanks
+
+    def _safe(*args, **kwargs):
         try:
-            import importlib
-            mod = importlib.import_module(mod_name)
-            orig = getattr(mod, attr, None)
-            if orig is not None and orig is not nullcontext:
-                setattr(mod, attr, nullcontext)
-                saved.append((mod, attr, orig))
-        except ImportError:
-            pass
+            return _orig(*args, **kwargs)
+        except RuntimeError as e:
+            if "meta" in str(e).lower() or "item" in str(e).lower():
+                # dummy placeholder — будет заменён load_state_dict
+                n_stft = args[0] if args else 128
+                n_mels = args[3] if len(args) > 3 else 80
+                return torch.zeros(n_stft, n_mels)
+            raise
+
+    _taf.melscale_fbanks = _safe
     try:
         yield
     finally:
-        for mod, attr, orig in saved:
-            setattr(mod, attr, orig)
+        _taf.melscale_fbanks = _orig
 
 class GigaAMv3(BaseASRModel):
     """
@@ -69,7 +70,7 @@ class GigaAMv3(BaseASRModel):
         
         print(f"📥 Loading GigaAM-v3 ({model_name}) from HF on {self.device}...")
         
-        with _no_init_empty_weights():
+        with _torchaudio_meta_safe():
             self.model = AutoModel.from_pretrained(
                 "ai-sage/GigaAM-v3",
                 revision=model_name,

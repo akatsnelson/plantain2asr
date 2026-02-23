@@ -15,8 +15,8 @@ except ImportError:
 
 @contextmanager
 def _quiet_nemo():
-    """Глушим весь вывод NeMo: и logging, и stderr-спам."""
-    # Поднимаем уровень всех nemo-логгеров
+    """Глушим весь вывод NeMo: logging + sys.stdout/stderr + OS-level fd."""
+    # 1. Python logging — все nemo-логгеры на CRITICAL
     nemo_loggers = [
         logging.getLogger(n)
         for n in list(logging.root.manager.loggerDict)
@@ -26,31 +26,45 @@ def _quiet_nemo():
     for lg in nemo_loggers:
         lg.setLevel(logging.CRITICAL)
 
-    # Глушим nemo.utils.logging напрямую
     try:
         from nemo.utils import logging as _nlog
         old_nlog = _nlog.logger.level
         _nlog.logger.setLevel(logging.CRITICAL)
+        # Убираем хендлеры NeMo-логгера
+        old_handlers = _nlog.logger.handlers[:]
+        _nlog.logger.handlers.clear()
     except Exception:
         old_nlog = None
+        old_handlers = []
 
-    # Перехватываем stderr (NeMo пишет туда минуя logging)
-    old_stderr = os.dup(2)
+    # 2. Перехватываем sys.stdout и sys.stderr (Python-уровень)
+    import sys
+    old_sout, old_serr = sys.stdout, sys.stderr
+    sys.stdout = sys.stderr = io.StringIO()
+
+    # 3. OS-уровень: fd 1 и fd 2 → /dev/null
+    old_fd1, old_fd2 = os.dup(1), os.dup(2)
     devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, 1)
     os.dup2(devnull, 2)
     os.close(devnull)
 
     try:
         yield
     finally:
-        os.dup2(old_stderr, 2)
-        os.close(old_stderr)
+        # Восстанавливаем fd
+        os.dup2(old_fd1, 1); os.close(old_fd1)
+        os.dup2(old_fd2, 2); os.close(old_fd2)
+        # Восстанавливаем sys streams
+        sys.stdout, sys.stderr = old_sout, old_serr
+        # Восстанавливаем logging
         for lg, lv in old_levels:
             lg.setLevel(lv)
         if old_nlog is not None:
             try:
                 from nemo.utils import logging as _nlog
                 _nlog.logger.setLevel(old_nlog)
+                _nlog.logger.handlers[:] = old_handlers
             except Exception:
                 pass
 

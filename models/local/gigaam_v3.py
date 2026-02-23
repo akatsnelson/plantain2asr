@@ -14,19 +14,34 @@ def _no_init_empty_weights():
     Патч init_empty_weights → nullcontext на время загрузки GigaAM v3.
 
     torchaudio.MelScale вычисляет mel-filterbank в __init__ и вызывает .item()
-    на тензоре-буфере. Это падает, если transformers активировал контекст
-    init_empty_weights (meta tensors). Патчим на уровне модуля, чтобы обойти
-    это вне зависимости от версии transformers/accelerate.
+    на тензоре-буфере. Это падает если transformers активировал meta-tensor
+    контекст через init_empty_weights.
+
+    transformers делает СВЕЖИЙ импорт внутри from_pretrained:
+        from accelerate import init_empty_weights  # локальная переменная!
+    Поэтому нужно патчить accelerate, а не transformers.modeling_utils.
     """
-    import transformers.modeling_utils as _tmu
-    _orig = getattr(_tmu, "init_empty_weights", None)
-    if _orig is not None:
-        _tmu.init_empty_weights = nullcontext
+    saved = []
+    # Патчим все возможные места откуда transformers может импортировать
+    for mod_name, attr in [
+        ("accelerate.big_modeling", "init_empty_weights"),
+        ("accelerate",              "init_empty_weights"),
+        ("transformers.modeling_utils", "init_empty_weights"),
+    ]:
+        try:
+            import importlib
+            mod = importlib.import_module(mod_name)
+            orig = getattr(mod, attr, None)
+            if orig is not None and orig is not nullcontext:
+                setattr(mod, attr, nullcontext)
+                saved.append((mod, attr, orig))
+        except ImportError:
+            pass
     try:
         yield
     finally:
-        if _orig is not None:
-            _tmu.init_empty_weights = _orig
+        for mod, attr, orig in saved:
+            setattr(mod, attr, orig)
 
 class GigaAMv3(BaseASRModel):
     """

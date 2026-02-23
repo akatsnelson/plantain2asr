@@ -41,6 +41,7 @@ tone = [
 
 # pip install plantain2asr[gigaam]
 gigaam = [
+    "gigaam>=0.1.0",
     "torch>=2.0",
     "torchaudio>=2.0",
     "transformers>=4.40",

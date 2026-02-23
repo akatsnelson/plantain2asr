@@ -28,9 +28,18 @@ class GigaAMv2(BaseASRModel):
         self._name = f"GigaAM-{model_name}"
         
         print(f"⏳ Loading {self._name} on {self.device}...")
-        self.model = gigaam.load_model(model_name)
-        self.model = self.model.to(self.device)
-        self.model.eval()
+        try:
+            self.model = gigaam.load_model(model_name)
+            self.model = self.model.to(self.device)
+            self.model.eval()
+        except RuntimeError as e:
+            if "CUDNN_STATUS_SUBLIBRARY_VERSION_MISMATCH" in str(e):
+                raise RuntimeError(
+                    f"cuDNN version mismatch при загрузке {self._name}.\n"
+                    "Переустанови torch под свою CUDA:\n"
+                    "  pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124 --force-reinstall"
+                ) from e
+            raise
 
     @property
     def name(self) -> str:

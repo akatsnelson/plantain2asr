@@ -9,40 +9,54 @@ from transformers import AutoModel, AutoProcessor
 
 
 @contextmanager
-def _torchaudio_meta_safe():
+def _gigaam_v3_compat():
     """
-    Патч torchaudio.functional.melscale_fbanks, чтобы она не падала
-    внутри meta-tensor контекста (init_empty_weights).
+    Два патча для совместимости GigaAM v3 с transformers >= 4.43.
 
-    Проблема: transformers >= 4.43 запускает __init__ модели внутри
-    init_empty_weights(), который делает все тензоры «мета».
-    torchaudio.MelScale вычисляет mel-filterbank и вызывает .item() на буфере —
-    это падает на мета-тензоре.
+    Патч 1 — torchaudio.functional.melscale_fbanks:
+        transformers >= 4.43 запускает __init__ модели внутри init_empty_weights()
+        (meta-tensor контекст). torchaudio.MelScale вызывает .item() на буфере
+        mel-filterbank — падает. Перехватываем, возвращаем zeros; буфер `fb`
+        всё равно перезаписывается реальными весами через load_state_dict.
 
-    Решение: перехватываем ошибку и возвращаем нулевой CPU-тензор.
-    Буфер `fb` всё равно перезаписывается реальными весами из чекпойнта
-    через load_state_dict — так что dummy-значение при инициализации безопасно.
+    Патч 2 — PreTrainedModel._finalize_model_loading:
+        transformers >= 4.46 добавил `all_tied_weights_keys` как обязательный
+        атрибут, которого нет в старом GigaAMModel.__init__. Добавляем его
+        перед вызовом финализации.
     """
     import torchaudio.functional as _taf
+    import transformers.modeling_utils as _tmu
 
-    _orig = _taf.melscale_fbanks
+    # --- Патч 1: torchaudio melscale_fbanks ---
+    _orig_fbanks = _taf.melscale_fbanks
 
-    def _safe(*args, **kwargs):
+    def _safe_fbanks(*args, **kwargs):
         try:
-            return _orig(*args, **kwargs)
+            return _orig_fbanks(*args, **kwargs)
         except RuntimeError as e:
             if "meta" in str(e).lower() or "item" in str(e).lower():
-                # dummy placeholder — будет заменён load_state_dict
                 n_stft = args[0] if args else 128
                 n_mels = args[3] if len(args) > 3 else 80
                 return torch.zeros(n_stft, n_mels)
             raise
 
-    _taf.melscale_fbanks = _safe
+    _taf.melscale_fbanks = _safe_fbanks
+
+    # --- Патч 2: all_tied_weights_keys ---
+    _orig_finalize = _tmu.PreTrainedModel._finalize_model_loading
+
+    def _safe_finalize(model, load_config, loading_info):
+        if not hasattr(model, "all_tied_weights_keys"):
+            model.all_tied_weights_keys = set()
+        return _orig_finalize(model, load_config, loading_info)
+
+    _tmu.PreTrainedModel._finalize_model_loading = staticmethod(_safe_finalize)
+
     try:
         yield
     finally:
-        _taf.melscale_fbanks = _orig
+        _taf.melscale_fbanks = _orig_fbanks
+        _tmu.PreTrainedModel._finalize_model_loading = _orig_finalize
 
 class GigaAMv3(BaseASRModel):
     """
@@ -70,7 +84,7 @@ class GigaAMv3(BaseASRModel):
         
         print(f"📥 Loading GigaAM-v3 ({model_name}) from HF on {self.device}...")
         
-        with _torchaudio_meta_safe():
+        with _gigaam_v3_compat():
             self.model = AutoModel.from_pretrained(
                 "ai-sage/GigaAM-v3",
                 revision=model_name,

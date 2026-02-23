@@ -33,6 +33,12 @@ dependencies = [
 
 [project.optional-dependencies]
 
+# pip install plantain2asr[tone]
+tone = [
+    "tone @ git+https://github.com/voicekit-team/T-one.git",
+    "onnxruntime-gpu>=1.16",
+]
+
 # pip install plantain2asr[gigaam]
 gigaam = [
     "torch>=2.0",

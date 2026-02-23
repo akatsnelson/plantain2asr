@@ -28,6 +28,15 @@ class GigaAMv2(BaseASRModel):
         self._name = f"GigaAM-{model_name}"
         
         print(f"⏳ Loading {self._name} on {self.device}...")
+
+        # PyTorch >= 2.6 требует явного разрешения omegaconf-типов в чекпоинте
+        try:
+            import torch.serialization as _ts
+            from omegaconf import DictConfig, ListConfig
+            _ts.add_safe_globals([DictConfig, ListConfig])
+        except Exception:
+            pass
+
         # cuDNN LSTM flatten_parameters несовместимо с CUDA 13.x.
         # Отключаем cuDNN на время загрузки — на inference не влияет критично.
         cudnn_was_enabled = torch.backends.cudnn.enabled

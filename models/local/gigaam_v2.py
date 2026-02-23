@@ -55,7 +55,14 @@ class GigaAMv2(BaseASRModel):
         return self._name
 
     def transcribe(self, audio_path: Union[str, Path]) -> str:
-        result = self.model.transcribe(str(audio_path))
+        path = str(audio_path)
+        try:
+            result = self.model.transcribe(path)
+        except Exception as e:
+            if "Too long" in str(e) or "transcribe_longform" in str(e):
+                result = self.model.transcribe_longform(path)
+            else:
+                raise
         if isinstance(result, list):
-            return result[0] if result else ""
+            return " ".join(result) if result else ""
         return str(result)

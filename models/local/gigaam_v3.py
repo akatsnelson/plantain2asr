@@ -46,8 +46,8 @@ def _gigaam_v3_compat():
     _orig_finalize = _tmu.PreTrainedModel._finalize_model_loading
 
     def _safe_finalize(model, load_config, loading_info):
-        if not hasattr(model, "all_tied_weights_keys"):
-            model.all_tied_weights_keys = set()
+            if not hasattr(model, "all_tied_weights_keys"):
+                    model.all_tied_weights_keys = {}
         return _orig_finalize(model, load_config, loading_info)
 
     _tmu.PreTrainedModel._finalize_model_loading = staticmethod(_safe_finalize)

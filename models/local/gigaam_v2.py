@@ -28,18 +28,16 @@ class GigaAMv2(BaseASRModel):
         self._name = f"GigaAM-{model_name}"
         
         print(f"⏳ Loading {self._name} on {self.device}...")
+        # cuDNN LSTM flatten_parameters несовместимо с CUDA 13.x.
+        # Отключаем cuDNN на время загрузки — на inference не влияет критично.
+        cudnn_was_enabled = torch.backends.cudnn.enabled
+        torch.backends.cudnn.enabled = False
         try:
             self.model = gigaam.load_model(model_name)
             self.model = self.model.to(self.device)
             self.model.eval()
-        except RuntimeError as e:
-            if "CUDNN_STATUS_SUBLIBRARY_VERSION_MISMATCH" in str(e):
-                raise RuntimeError(
-                    f"cuDNN version mismatch при загрузке {self._name}.\n"
-                    "Переустанови torch под свою CUDA:\n"
-                    "  pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124 --force-reinstall"
-                ) from e
-            raise
+        finally:
+            torch.backends.cudnn.enabled = cudnn_was_enabled
 
     @property
     def name(self) -> str:

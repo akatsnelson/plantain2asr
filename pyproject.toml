@@ -84,6 +84,7 @@ analysis = [
     "gensim>=4.3",
     "bert-score>=0.3.13",
     "torchmetrics>=1.0",
+    "num2words>=0.5.13",
 ]
 
 # pip install plantain2asr[train]

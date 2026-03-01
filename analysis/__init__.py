@@ -8,3 +8,6 @@ from .duration import DurationAnalyzer
 from .diff_visualizer import DiffVisualizer
 from .ngram_errors import NgramErrorAnalyzer
 from .calibration import CalibrationAnalyzer
+from .corpus_stats import CorpusStatsAnalyzer, CorpusComparison, CorpusReport
+from .vocab_intersection import VocabIntersectionAnalyzer
+from .pos_errors import PosErrorAnalyzer, PosErrorComparison, PosErrorReport

@@ -1,7 +1,7 @@
 from collections import Counter
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 import pandas as pd
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 try:
     import jiwer
@@ -21,10 +21,48 @@ class ErrorReport:
     substitution_details: Dict[str, Counter]
     total_words: int
     total_errors: int
+    # Суммарные счётчики для сравнения датасетов
+    total_deletions: int = 0
+    total_insertions: int = 0
+    total_substitutions: int = 0
+
+    @property
+    def del_rate(self) -> float:
+        """Доля удалений от всех токенов reference."""
+        return self.total_deletions / self.total_words if self.total_words else 0.0
+
+    @property
+    def ins_rate(self) -> float:
+        """Доля вставок от всех токенов reference."""
+        return self.total_insertions / self.total_words if self.total_words else 0.0
+
+    @property
+    def sub_rate(self) -> float:
+        """Доля замен от всех токенов reference."""
+        return self.total_substitutions / self.total_words if self.total_words else 0.0
+
+    def to_dict(self) -> dict:
+        """Сводная строка для pandas DataFrame."""
+        return {
+            'total_words':     self.total_words,
+            'total_errors':    self.total_errors,
+            'deletions':       self.total_deletions,
+            'insertions':      self.total_insertions,
+            'substitutions':   self.total_substitutions,
+            'del_rate_%':      round(self.del_rate * 100, 2),
+            'ins_rate_%':      round(self.ins_rate * 100, 2),
+            'sub_rate_%':      round(self.sub_rate * 100, 2),
+            'wer_%':           round(self.total_errors / self.total_words * 100, 2) if self.total_words else 0.0,
+        }
 
     def print(self):
+        w = self.total_words or 1
         print(f"\n📊 Word Error Analysis Report")
-        print(f"Total words: {self.total_words}, Total errors: {self.total_errors}")
+        print(f"  Слов reference : {self.total_words:,}")
+        print(f"  Ошибок всего   : {self.total_errors:,}  ({self.total_errors/w*100:.1f}% WER)")
+        print(f"  Удаления       : {self.total_deletions:,}  ({self.del_rate*100:.1f}%)")
+        print(f"  Вставки        : {self.total_insertions:,}  ({self.ins_rate*100:.1f}%)")
+        print(f"  Замены         : {self.total_substitutions:,}  ({self.sub_rate*100:.1f}%)")
         print("-" * 40)
 
         print(f"\n📉 Top Missed Words (Deletions):")
@@ -98,6 +136,7 @@ class WordErrorAnalyzer(Processor):
 
         total_words  = 0
         total_errors = 0
+        total_del = total_ins = total_sub = 0
 
         for sample in dataset:
             if not sample.text or target_model not in sample.asr_results:
@@ -121,16 +160,19 @@ class WordErrorAnalyzer(Processor):
                         word = output.references[0][ri]
                         deletions[word] += 1
                         total_errors += 1
+                        total_del += 1
                     elif t == 'insert':
                         word = output.hypotheses[0][hi]
                         insertions[word] += 1
                         total_errors += 1
+                        total_ins += 1
                     elif t == 'substitute':
                         ref_word = output.references[0][ri]
                         hyp_word = output.hypotheses[0][hi]
                         substitutions[ref_word] += 1
                         substitution_map.setdefault(ref_word, Counter())[hyp_word] += 1
                         total_errors += 1
+                        total_sub += 1
 
                 total_words += len(output.references[0])
 
@@ -139,10 +181,15 @@ class WordErrorAnalyzer(Processor):
 
         del_df = pd.DataFrame(deletions.most_common(self.top_n), columns=['Word', 'Count'])
         if not del_df.empty:
-            del_df['Rate (%)'] = (del_df['Count'] / total_errors * 100).round(1)
+            del_df['Rate (%)'] = (del_df['Count'] / total_words * 100).round(2)
 
         ins_df = pd.DataFrame(insertions.most_common(self.top_n), columns=['Word', 'Count'])
+        if not ins_df.empty:
+            ins_df['Rate (%)'] = (ins_df['Count'] / total_words * 100).round(2)
+
         sub_df = pd.DataFrame(substitutions.most_common(self.top_n), columns=['Reference', 'Count'])
+        if not sub_df.empty:
+            sub_df['Rate (%)'] = (sub_df['Count'] / total_words * 100).round(2)
 
         report = ErrorReport(
             top_deletions=del_df,
@@ -151,6 +198,9 @@ class WordErrorAnalyzer(Processor):
             substitution_details=substitution_map,
             total_words=total_words,
             total_errors=total_errors,
+            total_deletions=total_del,
+            total_insertions=total_ins,
+            total_substitutions=total_sub,
         )
         self.report = report
         report.print()

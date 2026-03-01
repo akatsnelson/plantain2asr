@@ -7,7 +7,7 @@ from .dataloaders import BaseASRDataset, NeMoDataset, DagrusDataset, GolosDatase
 # ── Pipeline building blocks ─────────────────────────────────────────
 from .models import Models
 from .metrics import Metrics
-from .normalization import BaseNormalizer, SimpleNormalizer, DagrusNormalizer
+from .normalization import BaseNormalizer, SimpleNormalizer, DagrusNormalizer, GolosNormalizer
 from .utils.functional import Filter, Sort, Take, Split
 
 # ── Reporting (interactive server + extensible sections) ─────────────
@@ -33,6 +33,13 @@ try:
         DurationAnalyzer,
         NgramErrorAnalyzer,
         CalibrationAnalyzer,
+        CorpusStatsAnalyzer,
+        CorpusComparison,
+        CorpusReport,
+        VocabIntersectionAnalyzer,
+        PosErrorAnalyzer,
+        PosErrorComparison,
+        PosErrorReport,
     )
 except ImportError:
     pass

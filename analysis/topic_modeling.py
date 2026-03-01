@@ -148,8 +148,10 @@ class TopicAnalyzer(Processor):
             # Collect WERs
             for model_name, res in s.asr_results.items():
                 metrics = res.get('metrics', {})
-                if 'wer' in metrics:
-                    model_topic_wer[model_name][dominant_topic].append(metrics['wer'])
+                # Поддерживаем оба варианта ключа: 'WER' (Metrics.composite) и 'wer'
+                wer_val = metrics.get('WER', metrics.get('wer'))
+                if wer_val is not None:
+                    model_topic_wer[model_name][dominant_topic].append(float(wer_val))
 
         # 3. Build Report Tables
         # Distribution

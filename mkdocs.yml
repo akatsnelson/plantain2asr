@@ -82,7 +82,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Interactive Constructor: constructor.html
+  - Interactive Constructor: constructor.md
   - Quick Start: quickstart.md
   - API Reference:
       - Datasets: api/dataloaders.md

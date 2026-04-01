@@ -7,7 +7,7 @@ This page shows the recommended path for a new user:
 3. normalize and score them,
 4. export shareable artifacts.
 
-If you want a visual builder first, open the [Interactive Constructor](constructor.html).
+If you want a visual builder first, open the [Interactive Constructor](constructor.md).
 
 ## Recommended install
 

@@ -6,7 +6,7 @@ The documentation is organized around one simple principle: start with the easie
 
 ## Recommended Entry Path
 
-1. Open the [Interactive Constructor](constructor.html) to assemble a pipeline visually.
+1. Open the [Interactive Constructor](constructor.md) to assemble a pipeline visually.
 2. Use `Experiment` for standard research workflows.
 3. Use the `>>` pipeline directly when you need full modular control.
 
@@ -102,7 +102,7 @@ Each step is still composable as a pipeline. `Experiment` simply orchestrates th
 
 ## If you are new
 
-- Go to [Interactive Constructor](constructor.html) if you want to assemble a chain and immediately see code.
+- Go to [Interactive Constructor](constructor.md) if you want to assemble a chain and immediately see code.
 - Go to [Quick Start](quickstart.md) if you want a canonical runnable workflow.
 - Go to [API Reference](api/dataloaders.md) if you already know what building block you need.
 - Go to [Extending](extending/index.md) if you want to add your own components.

@@ -1,7 +1,12 @@
-import tomllib
+import sys
 from pathlib import Path
 
 import pytest
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    tomllib = pytest.importorskip("tomli", reason="tomllib requires Python 3.11+")
 
 
 ROOT = Path(__file__).resolve().parents[1]

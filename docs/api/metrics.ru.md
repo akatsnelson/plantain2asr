@@ -1,6 +1,8 @@
 # Метрики
 
-## Фабрика Metrics
+Метрики считаются на нормализованных представлениях датасета и сохраняются по каждой модели и каждому семплу.
+
+## Фабрика `Metrics`
 
 ```python
 from plantain2asr import Metrics
@@ -8,32 +10,35 @@ from plantain2asr import Metrics
 
 | Метод фабрики | Описание |
 |---|---|
-| `Metrics.composite()` | Все метрики ниже за один быстрый проход (рекомендуется) |
-| `Metrics.WER()` | Word Error Rate — доля ошибочных слов |
-| `Metrics.CER()` | Character Error Rate — доля ошибочных символов |
+| `Metrics.composite()` | Рекомендуемый батчевый расчёт набора базовых метрик |
+| `Metrics.WER()` | Word Error Rate |
+| `Metrics.CER()` | Character Error Rate |
 | `Metrics.MER()` | Match Error Rate |
 | `Metrics.WIL()` | Word Information Lost |
 | `Metrics.WIP()` | Word Information Preserved |
-| `Metrics.Accuracy()` | 1 − MER |
+| `Metrics.Accuracy()` | `1 - MER` |
 | `Metrics.IDR()` | Insertion / Deletion Ratio |
-| `Metrics.LengthRatio()` | Отношение длины гипотезы к длине эталона |
-| `Metrics.BERTScore()` | Семантическое сходство (требует `analysis`) |
-| `Metrics.POSAnalysis()` | Разбивка ошибок по частям речи (требует `analysis`) |
+| `Metrics.LengthRatio()` | Длина гипотезы относительно эталона |
+| `Metrics.BERTScore()` | Семантическое сходство, требует `analysis` |
+| `Metrics.POSAnalysis()` | Анализ ошибок по частям речи, требует `analysis` |
+
+Типичное использование:
 
 ```python
-norm >> Metrics.composite()   # рекомендуется: все метрики, один вызов jiwer
-norm >> Metrics.WER()         # одна метрика
+norm >> Metrics.composite()
+norm >> Metrics.WER()
+metric = Metrics.get("cer")
 ```
 
-Результаты доступны в каждом семпле:
+Неизвестное имя метрики приводит к явной ошибке с подсказками.
+
+Форма хранения:
 
 ```python
-sample.asr_results["GigaAM-v3-e2e-rnnt"]["metrics"]["WER"]   # float (0–100)
+sample.asr_results["GigaAM-v3-e2e-rnnt"]["metrics"]["WER"]
 ```
 
----
-
-## BaseMetric
+## `BaseMetric`
 
 ```python
 from plantain2asr.metrics.base import BaseMetric
@@ -48,16 +53,16 @@ class BaseMetric(ABC):
     def calculate_batch(self, references: list, hypotheses: list) -> float: ...
 ```
 
-→ [Своя метрика](../extending/custom_metric.md)
+`calculate_batch` стоит переопределять, когда батчевая или векторизованная реализация дешевле поштучной.
 
----
+## `CompositeMetric`
 
-## CompositeMetric
-
-Вычисляет WER, CER, MER, WIL, WIP, Accuracy, IDR, LengthRatio за один вызов
-`jiwer.process_words` + `jiwer.process_characters` на модель.
-Примерно в **8 раз быстрее** поштучного подсчёта метрик.
+`CompositeMetric` считает базовые метрики за один проход и является основным рекомендуемым способом оценки.
 
 ```python
-norm >> Metrics.composite()
+from plantain2asr.metrics.composite import CompositeMetric
+
+norm >> CompositeMetric()
 ```
+
+→ [Своя метрика](../extending/custom_metric.md)

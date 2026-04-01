@@ -2,28 +2,31 @@ from abc import ABC
 import json
 import os
 import copy
-import logging
 import math
 import random
-from typing import Iterator, List, TYPE_CHECKING, Union, Optional, Callable, Any, Tuple
+from typing import Iterator, List, Dict, TYPE_CHECKING, Union, Optional, Callable, Any, Tuple
 try:
     from torch.utils.data import Dataset
 except ImportError:
     class Dataset:  # minimal stub when torch is not installed
         pass
 from pathlib import Path
+from ..utils.logging import get_logger
+from . import io as dataset_io
 from .types import AudioSample
 
 # Пробуем импортировать tqdm
 try:
     from tqdm.auto import tqdm
 except ImportError:
-    print("⚠️ tqdm not installed. Install for progress bars: pip install tqdm")
+    get_logger(__name__).warning("tqdm is not installed; progress bars are disabled.")
     def tqdm(iterable, **kwargs): return iterable
 
 if TYPE_CHECKING:
     from ..models.base import BaseASRModel
     from ..metrics.base import BaseMetric
+
+logger = get_logger(__name__)
 
 class BaseASRDataset(ABC, Dataset):
     """
@@ -88,7 +91,7 @@ class BaseASRDataset(ABC, Dataset):
                 except json.JSONDecodeError:
                     continue
 
-        print(f"[{self.name}] Loaded {len(self._samples)} samples from {self.manifest_path}")
+        logger.info("[%s] Loaded %s samples from %s", self.name, len(self._samples), self.manifest_path)
 
     def __len__(self) -> int:
         return len(self._samples)
@@ -98,6 +101,14 @@ class BaseASRDataset(ABC, Dataset):
 
     def __iter__(self) -> Iterator[AudioSample]:
         return iter(self._samples)
+
+    def _ensure_not_empty(self, action: str) -> None:
+        if self._samples:
+            return
+        raise ValueError(
+            f"Dataset '{self.name}' is empty. Cannot {action}. "
+            "Load data first or check your manifest/root_dir configuration."
+        )
     
     # ===== Functional API (Transformations) =====
 
@@ -118,7 +129,7 @@ class BaseASRDataset(ABC, Dataset):
         """
         new_ds = self.clone()
         new_ds._samples = [s for s in self._samples if predicate(s)]
-        print(f"✂️ Filtered: {len(self)} -> {len(new_ds)} samples")
+        logger.info("Filtered dataset: %s -> %s samples", len(self), len(new_ds))
         return new_ds
 
     def sort(self, key: Callable[[AudioSample], Any], reverse: bool = False) -> 'BaseASRDataset':
@@ -136,7 +147,7 @@ class BaseASRDataset(ABC, Dataset):
         """
         new_ds = self.clone()
         new_ds._samples = self._samples[:n]
-        print(f"✂️ Take: {len(new_ds)} samples")
+        logger.info("Taking first %s samples", len(new_ds))
         return new_ds
 
     def random_split(self, ratio: float = 0.8, seed: int = 42) -> tuple['BaseASRDataset', 'BaseASRDataset']:
@@ -157,7 +168,12 @@ class BaseASRDataset(ABC, Dataset):
         test_ds.name = f"{self.name}_test"
         test_ds._samples = [self._samples[i] for i in indices[split_idx:]]
         
-        print(f"✂️ Random Split: {len(self)} -> {len(train_ds)} (train) + {len(test_ds)} (test)")
+        logger.info(
+            "Random split: %s -> %s train + %s test",
+            len(self),
+            len(train_ds),
+            len(test_ds),
+        )
         return train_ds, test_ds
 
     def stratified_split(
@@ -192,7 +208,7 @@ class BaseASRDataset(ABC, Dataset):
         if all(isinstance(v, (int, float)) for v in values if v is not None):
             valid_values = [v for v in values if v is not None]
             if not valid_values:
-                print("⚠️ Stratification failed: no valid values. Fallback to random split.")
+                logger.warning("Stratification failed: no valid values. Falling back to random split.")
                 return self.random_split(ratio, seed)
                 
             min_v, max_v = min(valid_values), max(valid_values)
@@ -244,7 +260,13 @@ class BaseASRDataset(ABC, Dataset):
         test_ds.name = f"{self.name}_test_stratified"
         test_ds._samples = [self._samples[i] for i in test_indices]
         
-        print(f"✂️ Stratified Split (by {by}): {len(self)} -> {len(train_ds)} (train) + {len(test_ds)} (test)")
+        logger.info(
+            "Stratified split by %s: %s -> %s train + %s test",
+            by,
+            len(self),
+            len(train_ds),
+            len(test_ds),
+        )
         return train_ds, test_ds
 
     def __rshift__(self, other) -> Union['BaseASRDataset', tuple['BaseASRDataset', 'BaseASRDataset']]:
@@ -339,6 +361,42 @@ class BaseASRDataset(ABC, Dataset):
 
         return dataset
 
+    def run_model(
+        self,
+        model: 'BaseASRModel',
+        batch_size: Optional[int] = None,
+        save_step: Optional[int] = None,
+        force_process: bool = False,
+    ) -> 'BaseASRDataset':
+        """
+        Публичный orchestration-метод для инференса одной модели.
+
+        Нужен для верхнеуровневых experiment/scenario API, чтобы не обращаться
+        к private `_apply_model()` напрямую.
+        """
+        self._ensure_not_empty(f"run model '{model.name}'")
+        resolved_batch_size = batch_size if batch_size is not None else getattr(model, "batch_size", 32)
+        resolved_save_step = save_step if save_step is not None else getattr(model, "save_step", 32)
+        self._apply_model(
+            model,
+            batch_size=resolved_batch_size,
+            save_step=resolved_save_step,
+            force_process=force_process,
+        )
+        return self
+
+    def evaluate_metric(
+        self,
+        evaluator: 'BaseMetric',
+        force: bool = False,
+    ) -> 'BaseASRDataset':
+        """
+        Публичный orchestration-метод для расчёта метрик.
+        """
+        self._ensure_not_empty(f"evaluate metric '{getattr(evaluator, 'name', type(evaluator).__name__)}'")
+        self._apply_metric(evaluator, force=force)
+        return self
+
     # ===== Internal Logic =====
 
     def _apply_model(
@@ -357,36 +415,37 @@ class BaseASRDataset(ABC, Dataset):
             force_process: Если True — удаляет старый кэш и пересчитывает всё заново.
                            Если False (по умолчанию) — дозаписывает только то, что не обработано.
         """
-        print(f"\nEvaluating {model.name}...")
+        self._ensure_not_empty(f"run model '{model.name}'")
+        logger.info("Evaluating model %s", model.name)
 
         # 1. Опционально: чистим старые результаты
         if force_process:
-            print(f"   🔄 Force: clearing previous results for {model.name}")
+            logger.info("Force mode enabled; clearing previous results for %s", model.name)
             cache_path = self._get_cache_path(model.name)
             if cache_path.exists():
                 os.remove(cache_path)
-                print(f"      Deleted cache: {cache_path}")
+                logger.info("Deleted cache file %s", cache_path)
 
             cleared = sum(
                 1 for s in self._samples
                 if s.asr_results.pop(model.name, None) is not None
             )
             if cleared:
-                print(f"      Cleared {cleared} in-memory results")
+                logger.info("Cleared %s in-memory results for %s", cleared, model.name)
 
         # 2. Всегда: подгружаем то, что уже есть в кэше
         loaded_count = self._load_cache_for_model(model.name)
         if loaded_count > 0:
-            print(f"   ⏩ Resumed {loaded_count} samples from cache")
+            logger.info("Resumed %s samples from cache for %s", loaded_count, model.name)
 
         # 3. Определяем, что осталось обработать
         todo_samples = [s for s in self._samples if model.name not in s.asr_results]
 
         if not todo_samples:
-            print(f"   ✅ All samples already processed for {model.name}")
+            logger.info("All samples already processed for %s", model.name)
             return
 
-        print(f"   🔥 Processing {len(todo_samples)} remaining samples...")
+        logger.info("Processing %s remaining samples for %s", len(todo_samples), model.name)
 
         cache_path = self._get_cache_path(model.name)
 
@@ -425,14 +484,15 @@ class BaseASRDataset(ABC, Dataset):
         )
 
         mode = "batch (fast)" if use_batch else "per-sample"
-        print(f"📊 Calculating {metric_name} [{mode}] for {len(model_names)} models...")
+        self._ensure_not_empty(f"evaluate metric '{metric_name}'")
+        logger.info("Calculating %s in %s mode for %s models", metric_name, mode, len(model_names))
 
         if use_batch:
             count = self._apply_metric_batch(evaluator, model_names, metric_name, force)
         else:
             count = self._apply_metric_per_sample(evaluator, model_names, metric_name, force)
 
-        print(f"✅ Updated {metric_name} for {count} entries")
+        logger.info("Updated %s for %s entries", metric_name, count)
 
     def _apply_metric_batch(self, evaluator, model_names, metric_name, force):
         """Батчевый путь: 2 jiwer-вызова на модель."""
@@ -446,7 +506,8 @@ class BaseASRDataset(ABC, Dataset):
                 res = s.asr_results[m_name]
                 if res.get('error'):
                     continue
-                if not force and 'metrics' in res and metric_name in res.get('metrics', {}):
+                existing_metrics = res.get('metrics') or {}
+                if not force and metric_name in existing_metrics:
                     continue
                 todo.append(s)
 
@@ -459,7 +520,7 @@ class BaseASRDataset(ABC, Dataset):
             try:
                 batch_results = evaluator.calculate_batch_per_sample(refs, hyps)
             except Exception as e:
-                print(f"  ⚠️ Batch failed for {m_name}: {e}. Falling back to per-sample.")
+                logger.warning("Batch metric calculation failed for %s: %s. Falling back to per-sample mode.", m_name, e)
                 batch_results = None
 
             if batch_results is None:
@@ -473,7 +534,7 @@ class BaseASRDataset(ABC, Dataset):
                         res['metrics'].update(r if isinstance(r, dict) else {metric_name: r})
                         count += 1
                     except Exception as e:
-                        print(f"Error for {s.id}: {e}")
+                        logger.warning("Metric calculation failed for sample %s: %s", s.id, e)
                 continue
 
             for s, metrics_dict in zip(tqdm(todo, desc=m_name), batch_results):
@@ -497,7 +558,8 @@ class BaseASRDataset(ABC, Dataset):
                 res = sample.asr_results[m_name]
                 if res.get('error'):
                     continue
-                if not force and 'metrics' in res and metric_name in res.get('metrics', {}):
+                existing_metrics = res.get('metrics') or {}
+                if not force and metric_name in existing_metrics:
                     continue
                 if 'metrics' not in res:
                     res['metrics'] = {}
@@ -509,7 +571,7 @@ class BaseASRDataset(ABC, Dataset):
                         res['metrics'][metric_name] = result
                     count += 1
                 except Exception as e:
-                    print(f"Error computing metrics for {sample.id}: {e}")
+                    logger.warning("Metric calculation failed for sample %s: %s", sample.id, e)
         return count
 
     
@@ -521,53 +583,13 @@ class BaseASRDataset(ABC, Dataset):
 
     def save_unified_results(self, output_path: str):
         """Сохраняет полную историю результатов в один файл."""
-        path = Path(output_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        
-        print(f"💾 Saving unified results to {output_path}...")
-        with open(path, 'w', encoding='utf-8') as f:
-            for sample in self._samples:
-                f.write(json.dumps(sample.to_dict(), ensure_ascii=False) + '\n')
+        dataset_io.save_unified_results(self, output_path)
                 
     def save_legacy_results(self, output_path: str, model_name: str):
         """
         Сохраняет результаты КОНКРЕТНОЙ модели в старом плоском формате (для обратной совместимости).
         """
-        path = Path(output_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        
-        print(f"💾 Saving legacy results ({model_name}) to {output_path}...")
-        
-        saved_count = 0
-        with open(path, 'w', encoding='utf-8') as f:
-            for sample in self._samples:
-                if model_name not in sample.asr_results:
-                    continue
-                    
-                res = sample.asr_results[model_name]
-                
-                data = {
-                    "id": sample.id,
-                    "audio_path": sample.audio_path,
-                    "reference": sample.text,
-                    "duration": sample.duration,
-                    **sample.meta,
-                    "hypothesis": res.get("hypothesis", ""),
-                    "time": res.get("processing_time", 0.0),
-                    "model": model_name
-                }
-                
-                if res.get("error"):
-                    data["error"] = res["error"]
-                    
-                # Добавляем основные метрики в плоский вид, если есть
-                if 'metrics' in res:
-                    for k, v in res['metrics'].items():
-                        data[k] = v
-                        
-                f.write(json.dumps(data, ensure_ascii=False) + '\n')
-                saved_count += 1
-        print(f"   Saved {saved_count} lines")
+        dataset_io.save_legacy_results(self, output_path, model_name)
 
     def load_model_results(self, model_name: str, jsonl_path: str) -> int:
         """
@@ -600,135 +622,44 @@ class BaseASRDataset(ABC, Dataset):
                 "plantain2asr/asr_data/golos/crowd/GigaAM-v3-rnnt_results.jsonl",
             )
         """
-        matched = 0
-        skipped = 0
-
-        with open(jsonl_path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    data = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                audio = data.get("audio_path") or data.get("audio_filepath", "")
-                if not audio:
-                    continue
-
-                sid = Path(audio).name
-                sample = self._id_map.get(sid)
-                if sample is None:
-                    skipped += 1
-                    continue
-
-                sample.add_result(
-                    model_name=model_name,
-                    hypothesis=data.get("hypothesis", ""),
-                    duration=(data.get("processing_time") or data.get("time", 0.0)),
-                )
-                matched += 1
-
-        print(
-            f"[{self.name}] '{model_name}': matched {matched}/{len(self._samples)} samples"
-            + (f" ({skipped} unmatched)" if skipped else "")
-        )
-        return matched
+        return dataset_io.load_model_results(self, model_name, jsonl_path)
 
     def load_results(self, paths: Union[str, List[str]]):
         """
         Загружает результаты из JSONL файлов (поддерживает оба формата).
         """
-        if isinstance(paths, str):
-            paths = [paths]
-            
-        for path in paths:
-            path = Path(path)
-            if not path.exists():
-                print(f"⚠️ File not found: {path}")
-                continue
-                
-            print(f"📖 Loading results from {path.name}...")
-            loaded_count = 0
-            
-            with open(path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    try:
-                        data = json.loads(line)
-                        sample_id = data.get('id')
-                        
-                        if sample_id in self._id_map:
-                            sample = self._id_map[sample_id]
-                            
-                            # 1. Проверяем новый формат (asr_results)
-                            if 'asr_results' in data:
-                                sample.asr_results.update(data['asr_results'])
-                                loaded_count += 1
-                                continue
-                                
-                            # 2. Проверяем старый unified формат (results)
-                            if 'results' in data:
-                                sample.asr_results.update(data['results'])
-                                loaded_count += 1
-                                continue
-                                
-                            # 3. Проверяем легаси (плоский)
-                            model_name = data.get('name', data.get('model'))
-                            if not model_name and 'model_info' in data:
-                                model_name = data['model_info'].get('name')
-                            
-                            if model_name:
-                                hyp = data.get('hypothesis', '')
-                                time = data.get('processing_time', 0.0)
-                                err = data.get('error')
-                                # Пытаемся вытащить метрики из плоского файла
-                                metrics = {}
-                                for k in ['wer', 'cer', 'mer', 'wil', 'wip', 'accuracy']:
-                                    if k in data:
-                                        metrics[k] = data[k]
-                                
-                                sample.add_result(model_name, hyp, time, err, metrics=metrics if metrics else None)
-                                loaded_count += 1
-                            
-                    except json.JSONDecodeError:
-                        continue
-            
-            print(f"   Matched {loaded_count}/{len(self)} samples")
+        dataset_io.load_results(self, paths)
 
     def to_pandas(self):
         """
         Экспортирует датасет в pandas DataFrame для анализа.
         """
-        try:
-            import pandas as pd
-        except ImportError:
-            print("⚠️ Pandas not installed. Install it via 'pip install pandas'")
-            return None
-        
-        flat_data = []
-        for s in self._samples:
-            # Базовая инфа о сэмпле
-            base_info = {
-                "id": s.id,
-                "duration": s.duration,
-                "reference": s.text,
-                **s.meta
-            }
-            
-            # Разворачиваем результаты моделей
-            for model_name, res in s.asr_results.items():
-                row = base_info.copy()
-                row["model"] = model_name
-                row["hypothesis"] = res.get("hypothesis")
-                row["processing_time"] = res.get("processing_time")
-                row["error"] = res.get("error")
-                
-                # Добавляем метрики как отдельные колонки
-                if "metrics" in res and res["metrics"]:
-                    for m_name, m_val in res["metrics"].items():
-                        row[f"{m_name}"] = m_val
-                
-                flat_data.append(row)
-        
-        return pd.DataFrame(flat_data)
+        return dataset_io.to_pandas(self)
+
+    def iter_results_rows(self) -> List[Dict[str, Any]]:
+        """
+        Возвращает плоские записи вида one-row-per-(sample, model).
+
+        Это базовый экспортный формат для CSV/Excel/summary и исследовательских
+        надстроек.
+        """
+        return dataset_io.iter_results_rows(self)
+
+    def save_csv(self, output_path: str) -> str:
+        """
+        Сохраняет плоский исследовательский экспорт в CSV без зависимости от pandas.
+        """
+        return dataset_io.save_csv(self, output_path)
+
+    def save_excel(self, output_path: str) -> str:
+        """
+        Сохраняет плоский исследовательский экспорт в Excel.
+        Требует pandas и один из Excel backends.
+        """
+        return dataset_io.save_excel(self, output_path)
+
+    def summarize_by_model(self, metrics: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """
+        Агрегирует результаты по моделям в лёгкий tabular-friendly вид.
+        """
+        return dataset_io.summarize_by_model(self, metrics=metrics)

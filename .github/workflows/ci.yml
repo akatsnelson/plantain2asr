@@ -1,0 +1,223 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  core-smoke:
+    name: Core smoke (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package and test tools
+        run: python -m pip install . pytest
+
+      - name: Run core smoke tests
+        run: python -m pytest -m core
+
+  package-build:
+    name: Build package artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: python -m pip install build twine pytest
+
+      - name: Build artifacts
+        run: python -m build
+
+      - name: Validate package metadata
+        run: twine check dist/*
+
+      - name: Install wheel and run core smoke
+        run: python -m pip install dist/*.whl && python -m pytest -m core
+
+  docs-build:
+    name: Docs build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install docs dependencies
+        run: python -m pip install -r docs/requirements.txt
+
+      - name: Build docs in strict mode
+        run: mkdocs build --strict
+
+  tone-cpu-smoke:
+    name: T-One CPU smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install T-One CPU profile
+        run: python -m pip install ".[tone-cpu]" pytest
+
+      - name: Run T-One smoke tests
+        run: python -m pytest -m tone
+
+  gigaam-smoke:
+    name: GigaAM smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and test tools
+        run: python -m pip install ".[gigaam]" pytest
+
+      - name: Run GigaAM smoke tests
+        run: python -m pytest -m gigaam
+
+  whisper-smoke:
+    name: Whisper smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and test tools
+        run: python -m pip install ".[whisper]" pytest
+
+      - name: Run Whisper smoke tests
+        run: python -m pytest -m whisper
+
+  vosk-smoke:
+    name: Vosk smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Vosk profile
+        run: python -m pip install ".[vosk]" pytest
+
+      - name: Run Vosk smoke tests
+        run: python -m pytest -m vosk
+
+  train-smoke:
+    name: Train module smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and test tools
+        run: python -m pip install ".[train]" pytest
+
+      - name: Run train smoke tests
+        run: python -m pytest -m train
+
+  multi-model-smoke:
+    name: Multi-model single-environment smoke
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install package and test tools
+        run: python -m pip install ".[asr-cpu]" pytest
+
+      - name: Run multi-model smoke tests
+        run: python -m pytest -m integration
+
+  install-profile-smoke:
+    name: Install profile smoke (${{ matrix.extra }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        extra: ["analysis", "asr-cpu", "all"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install public profile
+        run: python -m pip install ".[${{ matrix.extra }}]"
+
+      - name: Import package after install
+        run: python -c "import plantain2asr"
+
+  tone-gpu-smoke:
+    name: T-One GPU smoke
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, linux, x64, gpu, nvidia]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install T-One GPU profile
+        run: python -m pip install ".[tone-gpu]" pytest
+
+      - name: Run GPU-oriented T-One smoke tests
+        run: python -m pytest -m tone

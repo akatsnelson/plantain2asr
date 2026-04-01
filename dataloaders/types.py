@@ -2,6 +2,9 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Tuple
 import sys
+from ..utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 @dataclass
 class AudioSample:
@@ -40,7 +43,13 @@ class AudioSample:
         for k, v in kwargs.items():
             try:
                 if sys.getsizeof(v) > 50 * 1024: # 50KB limit warning
-                    print(f"⚠️ Warning: Large object in result '{k}' for model '{model_name}' ({sys.getsizeof(v)} bytes). Avoid storing embeddings or audio data in JSONL.")
+                    logger.warning(
+                        "Large object in result '%s' for model '%s' (%s bytes). "
+                        "Avoid storing embeddings or audio data in JSONL.",
+                        k,
+                        model_name,
+                        sys.getsizeof(v),
+                    )
             except:
                 pass
 
@@ -90,9 +99,11 @@ class AudioSample:
         # Делаем это безопасно: при коллизиях не затираем системные поля.
         for k, v in meta.items():
             if k in d:
-                print(
-                    f"⚠️ Warning: meta key '{k}' conflicts with top-level field in AudioSample. "
-                    f"Storing it as 'meta__{k}'."
+                logger.warning(
+                    "meta key '%s' conflicts with a top-level AudioSample field. "
+                    "Storing it as 'meta__%s'.",
+                    k,
+                    k,
                 )
                 d[f"meta__{k}"] = v
             else:

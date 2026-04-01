@@ -1,8 +1,7 @@
-import random
 from typing import Callable, Any, TYPE_CHECKING, Tuple, Union, Optional
 
 if TYPE_CHECKING:
-    from .dataloaders.base import BaseASRDataset
+    from ..dataloaders.base import BaseASRDataset
 
 class Filter:
     """

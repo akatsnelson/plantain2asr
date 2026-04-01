@@ -38,7 +38,7 @@ class StripPunctNormalizer(BaseNormalizer):
 Use it:
 
 ```python
-from plantain2asr import GolosDataset, Metrics
+from plantain2asr import GolosDataset, Metrics, Models
 
 ds   = GolosDataset("data/golos")
 ds   >> Models.GigaAM_v3()
@@ -76,7 +76,9 @@ norm1 = ds >> StripPunctNormalizer()
 norm2 = norm1 >> AnnotatedCorpusNormalizer()   # applied on top
 ```
 
-## Full production example: DagrusNormalizer
+## Full production example: `DagrusNormalizer`
 
-See [`plantain2asr/normalization/dagrus.py`](../../plantain2asr/normalization/dagrus.py) for a full example
-that handles DaGRuS corpus annotations, fillers, colloquialisms, and `е`/`ё` equivalence.
+See the implementation in the repository source:
+[plantain2asr/normalization/dagrus.py](https://github.com/akatsnelson/plantain2asr/blob/main/plantain2asr/normalization/dagrus.py)
+
+It handles DaGRuS corpus annotations, fillers, colloquialisms, and `е`/`ё` equivalence.

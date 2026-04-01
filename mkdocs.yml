@@ -23,7 +23,6 @@ theme:
     - navigation.tabs
     - navigation.sections
     - navigation.top
-    - navigation.instant
     - search.highlight
     - search.suggest
     - content.code.copy
@@ -47,6 +46,7 @@ plugins:
           nav_translations:
             Home: Главная
             Quick Start: Быстрый старт
+            Interactive Constructor: Интерактивный конструктор
             API Reference: Справочник API
             Datasets: Датасеты
             Models: Модели
@@ -82,6 +82,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Interactive Constructor: constructor.html
   - Quick Start: quickstart.md
   - API Reference:
       - Datasets: api/dataloaders.md

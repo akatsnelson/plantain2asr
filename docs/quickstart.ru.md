@@ -1,84 +1,133 @@
 # Быстрый старт
 
-Полный пример: от загрузки датасета до интерактивного отчёта в браузере.
+Эта страница показывает рекомендуемый маршрут для нового пользователя:
 
-!!! note "Требования"
-    ```bash
-    pip install plantain2asr[gigaam,whisper]
-    ```
-    Для сервера отчётов дополнительные зависимости не нужны.
+1. выбрать датасет,
+2. прогнать несколько моделей,
+3. нормализовать и посчитать метрики,
+4. выгрузить готовые артефакты.
 
----
+Если сначала нужен визуальный сборщик, откройте [Интерактивный конструктор](constructor.html).
 
-## Шаг 1 — Загрузить датасет
+## Рекомендуемая установка
+
+```bash
+pip install plantain2asr[asr-cpu]
+```
+
+Для GPU-ориентированного локального сценария:
+
+```bash
+pip install plantain2asr[asr-gpu]
+```
+
+Дополнительный исследовательский слой:
+
+```bash
+pip install plantain2asr[analysis]
+```
+
+## Рекомендуемый workflow: `Experiment`
+
+```python
+from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
+
+dataset = GolosDataset("data/golos")
+
+experiment = Experiment(
+    dataset=dataset,
+    models=[
+        Models.GigaAM_v3(),
+        Models.Whisper(),
+    ],
+    normalizer=SimpleNormalizer(),
+)
+```
+
+### Шаг 1: сравнить модели на одном корпусе
+
+```python
+comparison = experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
+print(comparison["metrics_by_model"])
+```
+
+Что вы получаете:
+
+- инференс моделей с кешированием
+- нормализованный evaluation-view
+- агрегированную таблицу метрик по моделям
+
+### Шаг 2: посмотреть рейтинг
+
+```python
+leaderboard = experiment.leaderboard(metric="WER")
+print(leaderboard)
+```
+
+### Шаг 3: выгрузить артефакты
+
+```python
+experiment.save_leaderboard_csv("artifacts/leaderboard.csv", metric="WER")
+experiment.save_report_html("artifacts/report.html")
+experiment.export_error_cases("artifacts/error_cases.csv", metric="WER")
+```
+
+### Шаг 4: сделать материалы для диссертации
+
+```python
+tables = experiment.prepare_thesis_tables(
+    metrics=["WER", "CER", "Accuracy"],
+    output_dir="artifacts/thesis",
+)
+
+bundle = experiment.export_appendix_bundle(
+    output_dir="artifacts/appendix",
+    include_report=True,
+    include_benchmark=True,
+)
+```
+
+Используйте эти preset-сценарии по ситуации:
+
+- `compare_on_corpus()` для обычного сравнения моделей
+- `prepare_thesis_tables()` для чистых агрегированных таблиц
+- `export_appendix_bundle()` для полного пакета артефактов
+- `benchmark_models()` для замеров latency, throughput и RTF
+
+## Продвинутый workflow: прямой pipeline
+
+Используйте pipeline API, когда нужен явный контроль над каждым шагом.
+
+### Загрузить датасет
 
 ```python
 from plantain2asr import GolosDataset
 
-# Тестовая часть GOLOS — автозагрузка ~2.5 ГБ при первом запуске
 ds = GolosDataset("data/golos")
-print(f"Загружено {len(ds)} семплов")
-
-# Фильтрация по сабсету
-crowd    = ds.filter(lambda s: s.meta["subset"] == "crowd")
-farfield = ds.filter(lambda s: s.meta["subset"] == "farfield")
+crowd = ds.filter(lambda s: s.meta["subset"] == "crowd")
 ```
 
-!!! tip "Корпус DaGRuS"
-    ```python
-    from plantain2asr import DagrusDataset
-    ds = DagrusDataset("data/dagrus")
-    ```
-
----
-
-## Шаг 2 — Запустить инференс
+### Запустить инференс
 
 ```python
 from plantain2asr import Models
 
-crowd >> Models.GigaAM_v3()   # результаты сохраняются в sample.asr_results
-crowd >> Models.Whisper()     # добавьте ещё модели для сравнения
+crowd >> Models.GigaAM_v3()
+crowd >> Models.Whisper()
 ```
 
-!!! info "Кеширование"
-    Результаты кешируются на диске — повторный запуск той же модели на тех же данных
-    пропустит уже обработанные семплы. Можно прерывать и возобновлять.
+Результаты кешируются на диск, поэтому повторные запуски пропускают уже обработанные семплы.
 
----
-
-## Шаг 3 — Нормализовать
+### Нормализовать и посчитать метрики
 
 ```python
-from plantain2asr import SimpleNormalizer
+from plantain2asr import SimpleNormalizer, Metrics
 
-# Создаёт новый вид датасета — crowd остаётся неизменным
 norm = crowd >> SimpleNormalizer()
-```
-
-Нормализация выполняет: приведение к нижнему регистру, удаление пунктуации, `ё → е`.
-
-!!! tip "Аннотации корпуса DaGRuS"
-    Используйте `DagrusNormalizer`, чтобы также убрать `[laugh]`, `{word*}` и слова-паразиты:
-    ```python
-    from plantain2asr import DagrusNormalizer
-    norm = ds >> DagrusNormalizer()
-    ```
-
----
-
-## Шаг 4 — Посчитать метрики
-
-```python
-from plantain2asr import Metrics
-
 norm >> Metrics.composite()
-# WER, CER, MER, WIL, WIP, Accuracy, IDR, LengthRatio — всё за один быстрый проход
 ```
 
----
-
-## Шаг 5 — Исследовать результаты
+### Исследовать результаты
 
 === "Pandas"
     ```python
@@ -91,30 +140,27 @@ norm >> Metrics.composite()
     from plantain2asr import ReportServer
     ReportServer(norm, audio_dir="data/golos").serve()
     ```
-    Откройте **http://localhost:8765** — таблица метрик, частота ошибок с воспроизведением аудио, пословный diff.
 
-=== "Ошибки по словам"
+=== "Статический HTML-отчёт"
     ```python
-    from plantain2asr import WordErrorAnalyzer
-    norm >> WordErrorAnalyzer(model_name="GigaAM-v3-e2e-rnnt", top_n=20)
-    ```
+    from plantain2asr.reporting.builder import ReportBuilder
 
----
+    ReportBuilder(norm).save_static_html("artifacts/report.html")
+    ```
 
 ## Загрузка готовых результатов
 
-Запустили инференс на GPU-машине, скопировали JSONL — загружаете здесь:
+Если инференс был выполнен на другой машине, можно локально загрузить JSONL и продолжить оценку:
 
 ```python
 ds = GolosDataset("data/golos")
 ds.load_model_results("GigaAM-v3-rnnt", "results/GigaAM-v3-rnnt_results.jsonl")
 ```
 
-Формат JSONL — одна строка на семпл:
+Одна строка на семпл:
+
 ```json
 {"audio_path": "/любой/путь/file.wav", "hypothesis": "распознанный текст", "processing_time": 1.23}
 ```
 
-!!! warning "Сопоставление по имени файла"
-    Семплы сопоставляются по **basename** пути `audio_path`, а не по полному пути.
-    Это позволяет использовать результаты, посчитанные на другой машине.
+Сопоставление идёт по basename `audio_path`, поэтому результаты удобно переносить между машинами.

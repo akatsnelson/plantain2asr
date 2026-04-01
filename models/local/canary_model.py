@@ -6,11 +6,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Union, List
 from ..base import BaseASRModel
+from ...utils.logging import get_logger
 
 try:
     from nemo.collections.asr.models import EncDecMultiTaskModel
 except ImportError:
     EncDecMultiTaskModel = None
+
+logger = get_logger(__name__)
 
 
 @contextmanager
@@ -74,21 +77,29 @@ class CanaryModel(BaseASRModel):
         if EncDecMultiTaskModel is None:
             raise ImportError("nemo_toolkit not installed")
 
+        self.model_name = model_name
         if device == "cuda" and not torch.cuda.is_available():
             device = "mps" if torch.backends.mps.is_available() else "cpu"
         self.device = device
         self._name = "Canary-1B"
 
-        print(f"📥 Loading Canary-1B on {self.device}...")
+        logger.info("Loading Canary-1B on %s", self.device)
         with _quiet_nemo():
             self.model = EncDecMultiTaskModel.from_pretrained(model_name=model_name)
             self.model = self.model.to(self.device)
             self.model.eval()
-        print(f"✅ Canary-1B loaded")
+        logger.info("Canary-1B loaded")
 
     @property
     def name(self) -> str:
         return self._name
+
+    def training_not_supported_reason(self) -> str:
+        return (
+            f"{self.name} is not trainable through the shared plantain2asr trainer yet. "
+            "Canary needs a dedicated NeMo multitask training backend rather than the "
+            "current CTC-oriented online fine-tune path."
+        )
 
     def transcribe(self, audio_path: Union[str, Path]) -> str:
         with _quiet_nemo():

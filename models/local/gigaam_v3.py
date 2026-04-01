@@ -1,11 +1,38 @@
-import torch
 import os
 from contextlib import nullcontext, contextmanager
 from typing import Union, List, Optional, Tuple, Any
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from ..base import BaseASRModel
-from transformers import AutoModel, AutoProcessor
+from ...utils.logging import get_logger
+
+try:
+    import torch
+except ImportError:
+    torch = None
+
+try:
+    from transformers import AutoModel, AutoProcessor
+except ImportError:
+    AutoModel = None
+    AutoProcessor = None
+
+_SUPPORTED_V3_MODELS = {"e2e_rnnt", "e2e_ctc", "rnnt", "ctc", "turbo"}
+_GIGAAM_INSTALL_HINT = (
+    "Install the backend with one of:\n"
+    "  pip install plantain2asr[gigaam-v3]\n"
+    "  pip install plantain2asr[gigaam]      # shared v2+v3 environment"
+)
+
+logger = get_logger(__name__)
+
+
+def _resolve_torch_device(device: str) -> str:
+    from ...utils.device import resolve_torch_device
+
+    return resolve_torch_device(
+        device, backend_name="GigaAM v3", install_hint=_GIGAAM_INSTALL_HINT,
+    )
 
 
 @contextmanager
@@ -72,21 +99,21 @@ class GigaAMv3(BaseASRModel):
     - Динамическое разбиение на подбатчи для защиты от OOM
     - Graceful error handling
     """
-    def __init__(self, model_name: str = "e2e_rnnt", device: str = "cuda"):
+    def __init__(self, model_name: str = "e2e_rnnt", device: str = "auto"):
         if AutoModel is None:
-            raise ImportError("transformers not installed")
-            
-        # Smart device selection
-        if device == "cuda" and not torch.cuda.is_available():
-            if torch.backends.mps.is_available():
-                device = "mps"
-            else:
-                device = "cpu"
-        self.device = device
+            raise ImportError(f"transformers is required for GigaAM v3. {_GIGAAM_INSTALL_HINT}")
+        if model_name not in _SUPPORTED_V3_MODELS:
+            raise ValueError(
+                f"Unsupported GigaAM v3 variant '{model_name}'. "
+                f"Supported variants: {sorted(_SUPPORTED_V3_MODELS)}"
+            )
+
+        self.model_name = model_name
+        self.device = _resolve_torch_device(device)
         
         self._name = f"GigaAM-v3-{model_name}"
         
-        print(f"📥 Loading GigaAM-v3 ({model_name}) from HF on {self.device}...")
+        logger.info("Loading GigaAM-v3 (%s) from HF on %s", model_name, self.device)
         
         with _gigaam_v3_compat():
             self.model = AutoModel.from_pretrained(
@@ -113,6 +140,25 @@ class GigaAMv3(BaseASRModel):
     @property
     def is_e2e(self) -> bool:
         return "e2e" in self._name.lower()
+
+    @property
+    def supports_training(self) -> bool:
+        return self.training_backend == "ctc"
+
+    @property
+    def training_backend(self) -> Optional[str]:
+        if self.model_name in {"ctc", "e2e_ctc"}:
+            return "ctc"
+        return None
+
+    def training_not_supported_reason(self) -> str:
+        if self.model_name in {"rnnt", "e2e_rnnt", "turbo"}:
+            return (
+                f"{self.name} is not trainable through the current plantain2asr pipeline: "
+                "the first supported training backend is GigaAM v3 CTC. RNNT/turbo variants "
+                "need a dedicated trainer and decoding path."
+            )
+        return super().training_not_supported_reason()
 
     def transcribe(self, audio_path: Union[str, Path]) -> str:
         # transcribe доступен на верхней обертке
@@ -166,7 +212,7 @@ class GigaAMv3(BaseASRModel):
                 # Используем _inner_model для доступа к prepare_wav
                 return self._inner_model.prepare_wav(str(path))
             except Exception as e:
-                print(f"⚠️ Ошибка загрузки {path}: {e}")
+                logger.warning("Failed to load audio %s: %s", path, e)
                 return None
         
         with ThreadPoolExecutor(max_workers=min(8, len(audio_paths))) as executor:
@@ -229,7 +275,7 @@ class GigaAMv3(BaseASRModel):
                 idx, transcription, error = future.result()
                 results[idx] = transcription
                 if error:
-                    print(f"⚠️ Ошибка при транскрипции {audio_paths[idx]}: {error}")
+                    logger.warning("Transcription failed for %s: %s", audio_paths[idx], error)
         
         return results
 
@@ -237,7 +283,10 @@ class GigaAMv3(BaseASRModel):
         """
         Возвращает компоненты для обучения модели GigaAM.
         """
-        print("🔧 Preparing training components for GigaAM-v3...")
+        if not self.supports_training:
+            raise NotImplementedError(self.training_not_supported_reason())
+
+        logger.info("Preparing training components for GigaAM-v3")
         
         processor = None
         
@@ -272,13 +321,15 @@ class GigaAMv3(BaseASRModel):
                     feature_extractor = Wav2Vec2FeatureExtractor(feature_size=1, sampling_rate=16000, padding_value=0.0, do_normalize=True, return_attention_mask=True)
                     processor = Wav2Vec2Processor(feature_extractor=feature_extractor, tokenizer=tokenizer)
                 except Exception as e:
-                    print(f"⚠️ Could not wrap custom tokenizer into Wav2Vec2Processor: {e}")
+                    logger.warning("Could not wrap custom tokenizer into Wav2Vec2Processor: %s", e)
                     processor = tokenizer # Возвращаем хотя бы токенизатор (но feature extraction сломается)
 
         # Попытка 3: Фоллбек на стандартный русский токенизатор (ОПАСНО: словари могут не совпасть!)
         if processor is None:
-            print("⚠️ WARNING: Could not find GigaAM tokenizer. Using fallback 'jonatasgrosman/wav2vec2-large-xlsr-53-russian'.")
-            print("⚠️ NOTE: Fine-tuning might fail if vocabularies mismatch!")
+            logger.warning(
+                "Could not find GigaAM tokenizer. Using fallback 'jonatasgrosman/wav2vec2-large-xlsr-53-russian'. "
+                "Fine-tuning may fail if vocabularies mismatch."
+            )
             from transformers import Wav2Vec2Processor
             processor = Wav2Vec2Processor.from_pretrained("jonatasgrosman/wav2vec2-large-xlsr-53-russian")
 
@@ -290,7 +341,7 @@ class GigaAMv3(BaseASRModel):
         elif hasattr(self._inner_model, "freeze_feature_encoder"):
             self._inner_model.freeze_feature_encoder()
             
-        print("   ✅ Model is in TRAIN mode (feature extractor frozen)")
+        logger.info("GigaAM-v3 model is in train mode (feature extractor frozen)")
 
         # 3. Data Collator (возвращаем None, Trainer должен использовать дефолтный или мы добавим позже)
         return self.model, processor, None

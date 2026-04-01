@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>plantain2asr Interactive Constructor</title>
+  <style>
+    :root{
+      --bg:#0f172a;
+      --surface:#111827;
+      --surface-2:#1f2937;
+      --panel:#ffffff;
+      --panel-soft:#f8fafc;
+      --text:#e5e7eb;
+      --muted:#94a3b8;
+      --accent:#22c55e;
+      --accent-2:#16a34a;
+      --line:#334155;
+      --line-soft:#e2e8f0;
+      --warn:#f59e0b;
+      --shadow:0 20px 50px rgba(15, 23, 42, .18);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(34,197,94,.18), transparent 30%),
+        radial-gradient(circle at top right, rgba(59,130,246,.16), transparent 35%),
+        linear-gradient(180deg, #020617 0%, #0f172a 100%);
+      color:var(--text);
+    }
+    .shell{
+      max-width:1440px;
+      margin:0 auto;
+      padding:40px 24px 64px;
+    }
+    .hero{
+      display:grid;
+      grid-template-columns:1.2fr .8fr;
+      gap:22px;
+      margin-bottom:26px;
+    }
+    .hero-card,.summary-card,.builder-card,.code-card,.guide-card{
+      border:1px solid rgba(148,163,184,.18);
+      border-radius:var(--radius);
+      background:rgba(15,23,42,.72);
+      backdrop-filter:blur(18px);
+      box-shadow:var(--shadow);
+    }
+    .hero-card{
+      padding:28px;
+    }
+    .hero h1{
+      margin:0 0 10px;
+      font-size:42px;
+      line-height:1.05;
+      letter-spacing:-0.03em;
+    }
+    .hero p{
+      margin:0;
+      color:var(--muted);
+      font-size:16px;
+      line-height:1.65;
+      max-width:70ch;
+    }
+    .hero-badges{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:20px;
+    }
+    .badge{
+      border:1px solid rgba(148,163,184,.2);
+      background:rgba(255,255,255,.04);
+      color:#dbeafe;
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:12px;
+      letter-spacing:.02em;
+    }
+    .summary-card{
+      padding:24px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap:14px;
+    }
+    .summary-card h2{
+      margin:0;
+      font-size:18px;
+    }
+    .summary-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    }
+    .summary-pill{
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(148,163,184,.16);
+      border-radius:14px;
+      padding:12px 14px;
+    }
+    .summary-pill .k{
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:6px;
+    }
+    .summary-pill .v{
+      font-weight:700;
+      font-size:15px;
+      color:#f8fafc;
+    }
+    .layout{
+      display:grid;
+      grid-template-columns:minmax(380px, 520px) minmax(420px, 1fr);
+      gap:22px;
+    }
+    .builder-card,.code-card,.guide-card{
+      padding:22px;
+    }
+    .section-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      margin-bottom:16px;
+    }
+    .section-title h2{
+      margin:0;
+      font-size:20px;
+    }
+    .section-title span{
+      color:var(--muted);
+      font-size:13px;
+    }
+    .group{
+      margin-bottom:18px;
+      padding-bottom:18px;
+      border-bottom:1px solid rgba(148,163,184,.14);
+    }
+    .group:last-child{
+      border-bottom:none;
+      margin-bottom:0;
+      padding-bottom:0;
+    }
+    .label{
+      display:block;
+      margin-bottom:10px;
+      font-size:13px;
+      color:#d1d5db;
+      font-weight:700;
+      letter-spacing:.02em;
+    }
+    .subtext{
+      margin:-2px 0 12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.55;
+    }
+    .choices{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    .choice{
+      border:1px solid rgba(148,163,184,.2);
+      background:rgba(255,255,255,.03);
+      color:#e5e7eb;
+      padding:11px 13px;
+      border-radius:14px;
+      cursor:pointer;
+      transition:.18s ease;
+      font-size:13px;
+      line-height:1.35;
+      min-width:0;
+    }
+    .choice strong{
+      display:block;
+      font-size:13px;
+      margin-bottom:4px;
+    }
+    .choice small{
+      color:var(--muted);
+      display:block;
+    }
+    .choice.active{
+      border-color:rgba(34,197,94,.5);
+      background:linear-gradient(180deg, rgba(34,197,94,.22), rgba(34,197,94,.08));
+      color:#f0fdf4;
+      transform:translateY(-1px);
+    }
+    select{
+      width:100%;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(148,163,184,.2);
+      background:rgba(255,255,255,.05);
+      color:#f8fafc;
+      font-size:14px;
+    }
+    .toggles{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+    }
+    .toggle{
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      padding:11px 12px;
+      border-radius:14px;
+      border:1px solid rgba(148,163,184,.16);
+      background:rgba(255,255,255,.03);
+    }
+    .toggle input{
+      margin-top:3px;
+    }
+    .toggle strong{
+      display:block;
+      font-size:13px;
+      margin-bottom:3px;
+    }
+    .toggle small{
+      color:var(--muted);
+      line-height:1.45;
+    }
+    .builder-note{
+      margin-top:14px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:rgba(245,158,11,.08);
+      border:1px solid rgba(245,158,11,.25);
+      color:#fde68a;
+      font-size:13px;
+      line-height:1.55;
+    }
+    .stack{
+      display:grid;
+      gap:18px;
+    }
+    .code-box{
+      background:#0b1120;
+      border:1px solid rgba(148,163,184,.18);
+      border-radius:16px;
+      overflow:hidden;
+    }
+    .code-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:12px 14px;
+      border-bottom:1px solid rgba(148,163,184,.12);
+      color:#cbd5e1;
+      font-size:13px;
+    }
+    .copy-btn{
+      border:none;
+      background:#1e293b;
+      color:#e2e8f0;
+      padding:8px 12px;
+      border-radius:10px;
+      cursor:pointer;
+      font-size:12px;
+    }
+    pre{
+      margin:0;
+      padding:18px;
+      overflow:auto;
+      color:#e2e8f0;
+      font-size:13px;
+      line-height:1.65;
+    }
+    .install-box{
+      padding:14px 16px;
+      border-radius:16px;
+      background:var(--panel);
+      color:#0f172a;
+      border:1px solid var(--line-soft);
+    }
+    .install-box h3,
+    .guide-card h3{
+      margin:0 0 8px;
+      font-size:16px;
+    }
+    .install-box code{
+      display:block;
+      margin-top:10px;
+      padding:12px 14px;
+      border-radius:12px;
+      background:var(--panel-soft);
+      font-size:13px;
+      overflow:auto;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+    .chain{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    .chain-node{
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(148,163,184,.16);
+      border-radius:14px;
+      padding:12px 14px;
+      min-width:120px;
+    }
+    .chain-node .t{
+      color:var(--muted);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+      margin-bottom:6px;
+    }
+    .chain-node .v{
+      font-size:13px;
+      color:#f8fafc;
+      line-height:1.45;
+    }
+    .arrow{
+      align-self:center;
+      color:var(--muted);
+      font-weight:700;
+    }
+    .guide-grid{
+      display:grid;
+      gap:12px;
+    }
+    .guide-step{
+      border-radius:14px;
+      border:1px solid rgba(148,163,184,.14);
+      background:rgba(255,255,255,.03);
+      padding:14px;
+    }
+    .guide-step .num{
+      color:var(--accent);
+      font-size:12px;
+      font-weight:800;
+      letter-spacing:.06em;
+      text-transform:uppercase;
+      margin-bottom:6px;
+    }
+    .guide-step strong{
+      display:block;
+      margin-bottom:6px;
+      font-size:14px;
+    }
+    .guide-step p{
+      margin:0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.55;
+    }
+    .artifact-list{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    .artifact{
+      padding:10px 12px;
+      border-radius:12px;
+      background:rgba(34,197,94,.08);
+      border:1px solid rgba(34,197,94,.22);
+      color:#dcfce7;
+      font-size:13px;
+    }
+    .footer-note{
+      margin-top:18px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.6;
+    }
+    @media (max-width: 1120px){
+      .hero,.layout{grid-template-columns:1fr}
+    }
+    @media (max-width: 720px){
+      .shell{padding:24px 14px 40px}
+      .hero h1{font-size:32px}
+      .toggles,.summary-grid{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-card">
+        <h1>Интерактивный конструктор цепочек plantain2asr</h1>
+        <p>
+          Выберите, что вы хотите получить на выходе: быстрое сравнение моделей, браузерный отчёт,
+          таблицы для диссертации или полный bundle для приложения. Конструктор сразу покажет
+          рекомендуемый способ, готовый код, нужную `pip install` команду и итоговые артефакты.
+        </p>
+        <div class="hero-badges">
+          <span class="badge">Начните с пресета</span>
+          <span class="badge">Соберите цепочку без чтения всего API</span>
+          <span class="badge">Сравните basic и advanced подходы</span>
+        </div>
+      </div>
+      <div class="summary-card">
+        <h2>Что делает конструктор</h2>
+        <div class="summary-grid">
+          <div class="summary-pill"><div class="k">Маршрут</div><div class="v" id="summary-route">Experiment preset</div></div>
+          <div class="summary-pill"><div class="k">Установка</div><div class="v" id="summary-install">core</div></div>
+          <div class="summary-pill"><div class="k">Сложность</div><div class="v" id="summary-complexity">Низкая</div></div>
+          <div class="summary-pill"><div class="k">Артефакты</div><div class="v" id="summary-artifacts">CSV + leaderboard</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="builder-card">
+        <div class="section-title">
+          <h2>1. Соберите сценарий</h2>
+          <span>Сначала результат, потом детали</span>
+        </div>
+
+        <div class="group">
+          <label class="label">Какой результат нужен?</label>
+          <div class="choices" id="preset-choices"></div>
+        </div>
+
+        <div class="group">
+          <label class="label" for="dataset-select">Какой датасет вы используете?</label>
+          <p class="subtext">Можно выбрать готовый loader или шаблон для своего манифеста.</p>
+          <select id="dataset-select"></select>
+        </div>
+
+        <div class="group">
+          <label class="label">Какие модели хотите сравнить?</label>
+          <div class="choices" id="model-choices"></div>
+        </div>
+
+        <div class="group">
+          <label class="label" for="normalizer-select">Нужна ли нормализация?</label>
+          <p class="subtext">Для большинства сравнений нормализация нужна. Для DaGRuS используйте специализированный нормализатор.</p>
+          <select id="normalizer-select"></select>
+        </div>
+
+        <div class="group">
+          <label class="label">Какие метрики хотите видеть?</label>
+          <div class="choices" id="metric-choices"></div>
+        </div>
+
+        <div class="group">
+          <label class="label">Дополнительные артефакты</label>
+          <div class="toggles">
+            <label class="toggle">
+              <input type="checkbox" id="artifact-static-report">
+              <span><strong>Статический HTML отчёт</strong><small>Сохраняет self-contained HTML без запуска сервера.</small></span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="artifact-browser-report">
+              <span><strong>Браузерный отчёт</strong><small>Открывается через `ReportServer(...).serve()` локально.</small></span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="artifact-benchmark">
+              <span><strong>Benchmark</strong><small>Latency / throughput / RTF по устройствам.</small></span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" id="artifact-pandas">
+              <span><strong>Pandas таблица</strong><small>Для своего анализа и графиков в notebook.</small></span>
+            </label>
+          </div>
+          <div class="builder-note" id="builder-note"></div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="code-card">
+          <div class="section-title">
+            <h2>2. Готовая цепочка</h2>
+            <span>Конструктор сам выберет рекомендуемый стиль</span>
+          </div>
+          <div class="chain" id="chain-visual"></div>
+          <div class="install-box" style="margin-top:16px">
+            <h3>Команда установки</h3>
+            <div style="color:#475569;font-size:13px">Минимальный набор extras для выбранной цепочки.</div>
+            <code id="install-command"></code>
+          </div>
+          <div class="code-box" style="margin-top:16px">
+            <div class="code-head">
+              <span>Готовый код</span>
+              <button class="copy-btn" id="copy-code">Скопировать</button>
+            </div>
+            <pre><code id="generated-code"></code></pre>
+          </div>
+        </div>
+
+        <div class="guide-card">
+          <div class="section-title">
+            <h2>3. Что произойдёт</h2>
+            <span>Не только код, но и объяснение</span>
+          </div>
+          <div class="guide-grid" id="guide-steps"></div>
+          <div style="margin-top:16px">
+            <h3>Какие артефакты получите</h3>
+            <div class="artifact-list" id="artifact-list"></div>
+          </div>
+          <div class="footer-note">
+            Если нужно больше контроля, переключайтесь на пресет <strong>Custom Pipeline</strong>.
+            Для большинства исследовательских задач сначала используйте <strong>Experiment presets</strong>,
+            а к `>>`-pipeline переходите только когда действительно нужен ручной контроль над шагами.
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const PRESETS = [
+      {
+        id: "compare",
+        title: "Быстро сравнить модели",
+        hint: "Сразу получить summary, comparison и leaderboard",
+        route: "Experiment.compare_on_corpus()",
+        complexity: "Низкая",
+        defaultArtifacts: ["csv", "leaderboard"],
+        note: "Это лучший старт для большинства пользователей. Не нужно вручную собирать весь pipeline."
+      },
+      {
+        id: "browser-report",
+        title: "Запустить отчёт в браузере",
+        hint: "Метрики + ошибки + diff с аудио",
+        route: "Experiment.evaluate() + .report().serve()",
+        complexity: "Низкая",
+        defaultArtifacts: ["browser-report"],
+        note: "Подходит, если вы хотите сразу смотреть ошибки и слушать аудио, а не только получать таблицы."
+      },
+      {
+        id: "thesis",
+        title: "Собрать таблицы для диссертации",
+        hint: "CSV для results / summary / leaderboard / error cases",
+        route: "Experiment.prepare_thesis_tables()",
+        complexity: "Низкая",
+        defaultArtifacts: ["csv", "leaderboard", "error-cases"],
+        note: "Это правильный путь, если вам нужны готовые табличные артефакты, а не просто запуск модели."
+      },
+      {
+        id: "appendix",
+        title: "Собрать полный bundle",
+        hint: "Таблицы + HTML отчёт + benchmark для приложений",
+        route: "Experiment.export_appendix_bundle()",
+        complexity: "Средняя",
+        defaultArtifacts: ["csv", "leaderboard", "error-cases", "static-report", "benchmark"],
+        note: "Используйте, когда хотите за один прогон получить почти всё для главы/приложения."
+      },
+      {
+        id: "pipeline",
+        title: "Собрать custom pipeline вручную",
+        hint: "Для продвинутого контроля над шагами",
+        route: "dataset >> model >> normalizer >> metric",
+        complexity: "Высокая",
+        defaultArtifacts: ["pandas"],
+        note: "Нужен только если вам действительно важно вручную контролировать форму цепочки."
+      }
+    ];
+
+    const DATASETS = [
+      {
+        id: "golos",
+        label: "GolosDataset",
+        code: 'GolosDataset("data/golos")',
+        audioDir: '"data/golos"',
+        explanation: "Автоматически загрузит GOLOS при первом запуске."
+      },
+      {
+        id: "dagrus",
+        label: "DagrusDataset",
+        code: 'DagrusDataset("data/dagrus")',
+        audioDir: '"data/dagrus"',
+        explanation: "Хорошо сочетается с DagrusNormalizer."
+      },
+      {
+        id: "rudevices",
+        label: "RuDevicesDataset",
+        code: 'RuDevicesDataset("data/rudevices")',
+        audioDir: '"data/rudevices"',
+        explanation: "Подходит для корпусного сравнения локальных моделей."
+      },
+      {
+        id: "nemo",
+        label: "NeMoDataset / свой manifest",
+        code: 'NeMoDataset(root_dir="data/custom", manifest_path="data/custom/manifest.jsonl")',
+        audioDir: '"data/custom"',
+        explanation: "Если у вас свой JSONL manifest."
+      }
+    ];
+
+    const MODELS = [
+      { id:"gigaam_v3", label:"GigaAM v3", code:'lambda: Models.GigaAM_v3()', extra:"gigaam", note:"Хороший универсальный выбор" },
+      { id:"gigaam_v2", label:"GigaAM v2", code:'lambda: Models.GigaAM_v2()', extra:"gigaam", note:"Если нужно сравнить v2 и v3" },
+      { id:"whisper", label:"Whisper", code:'lambda: Models.Whisper()', extra:"whisper", note:"Сильный baseline" },
+      { id:"vosk", label:"Vosk", code:'lambda: Models.Vosk()', extra:"vosk", note:"CPU-only offline baseline" },
+      { id:"tone", label:"T-One", code:'lambda: Models.Tone()', extra:"tone", note:"ONNX runtime backend" },
+      { id:"canary", label:"Canary", code:'lambda: Models.Canary()', extra:"canary", note:"Тяжёлый NeMo backend" },
+      { id:"salute", label:"SaluteSpeech", code:'lambda: Models.SaluteSpeech()', extra:null, note:"Облачный API" }
+    ];
+
+    const NORMALIZERS = [
+      { id:"none", label:"Без нормализации", code:null },
+      { id:"simple", label:"SimpleNormalizer", code:"SimpleNormalizer()" },
+      { id:"dagrus", label:"DagrusNormalizer", code:"DagrusNormalizer()" },
+      { id:"golos", label:"GolosNormalizer", code:"GolosNormalizer()" }
+    ];
+
+    const METRICS = [
+      { id:"composite", label:"Composite default", code:"Metrics.composite()", names:["WER","CER","MER","WIL","WIP","Accuracy","IDR","LengthRatio"] },
+      { id:"wer", label:"WER", code:"Metrics.WER()", names:["WER"] },
+      { id:"cer", label:"CER", code:"Metrics.CER()", names:["CER"] },
+      { id:"accuracy", label:"Accuracy", code:"Metrics.Accuracy()", names:["Accuracy"] }
+    ];
+
+    const state = {
+      preset: "compare",
+      dataset: "golos",
+      models: new Set(["gigaam_v3", "whisper"]),
+      normalizer: "simple",
+      metrics: new Set(["composite"]),
+      artifacts: {
+        "static-report": false,
+        "browser-report": false,
+        benchmark: false,
+        pandas: false,
+      }
+    };
+
+    const presetBox = document.getElementById("preset-choices");
+    const modelBox = document.getElementById("model-choices");
+    const metricBox = document.getElementById("metric-choices");
+    const datasetSelect = document.getElementById("dataset-select");
+    const normalizerSelect = document.getElementById("normalizer-select");
+
+    function renderPresetChoices() {
+      presetBox.innerHTML = PRESETS.map(p => `
+        <button class="choice ${state.preset===p.id?'active':''}" data-preset="${p.id}">
+          <strong>${p.title}</strong>
+          <small>${p.hint}</small>
+        </button>
+      `).join("");
+      presetBox.querySelectorAll("[data-preset]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.preset = btn.dataset.preset;
+          applyPresetDefaults();
+          renderAll();
+        });
+      });
+    }
+
+    function renderModelChoices() {
+      modelBox.innerHTML = MODELS.map(m => `
+        <button class="choice ${state.models.has(m.id)?'active':''}" data-model="${m.id}">
+          <strong>${m.label}</strong>
+          <small>${m.note}</small>
+        </button>
+      `).join("");
+      modelBox.querySelectorAll("[data-model]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.model;
+          if (state.models.has(id)) {
+            if (state.models.size > 1) state.models.delete(id);
+          } else {
+            state.models.add(id);
+          }
+          renderAll();
+        });
+      });
+    }
+
+    function renderMetricChoices() {
+      metricBox.innerHTML = METRICS.map(m => `
+        <button class="choice ${state.metrics.has(m.id)?'active':''}" data-metric="${m.id}">
+          <strong>${m.label}</strong>
+          <small>${m.names.join(", ")}</small>
+        </button>
+      `).join("");
+      metricBox.querySelectorAll("[data-metric]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.metric;
+          if (state.metrics.has(id)) {
+            if (state.metrics.size > 1) state.metrics.delete(id);
+          } else {
+            state.metrics.add(id);
+          }
+          renderAll();
+        });
+      });
+    }
+
+    function renderSelectors() {
+      datasetSelect.innerHTML = DATASETS.map(d => `<option value="${d.id}">${d.label}</option>`).join("");
+      datasetSelect.value = state.dataset;
+      datasetSelect.onchange = () => {
+        state.dataset = datasetSelect.value;
+        if (state.dataset === "dagrus" && state.normalizer === "simple") {
+          state.normalizer = "dagrus";
+        }
+        renderAll();
+      };
+
+      normalizerSelect.innerHTML = NORMALIZERS.map(n => `<option value="${n.id}">${n.label}</option>`).join("");
+      normalizerSelect.value = state.normalizer;
+      normalizerSelect.onchange = () => {
+        state.normalizer = normalizerSelect.value;
+        renderAll();
+      };
+    }
+
+    function applyPresetDefaults() {
+      state.artifacts["static-report"] = false;
+      state.artifacts["browser-report"] = false;
+      state.artifacts["benchmark"] = false;
+      state.artifacts["pandas"] = false;
+
+      if (state.preset === "browser-report") {
+        state.artifacts["browser-report"] = true;
+      }
+      if (state.preset === "appendix") {
+        state.artifacts["static-report"] = true;
+        state.artifacts["benchmark"] = true;
+      }
+      if (state.preset === "pipeline") {
+        state.artifacts["pandas"] = true;
+      }
+    }
+
+    function selectedPreset() {
+      return PRESETS.find(p => p.id === state.preset);
+    }
+
+    function selectedDataset() {
+      return DATASETS.find(d => d.id === state.dataset);
+    }
+
+    function selectedModels() {
+      return MODELS.filter(m => state.models.has(m.id));
+    }
+
+    function selectedNormalizer() {
+      return NORMALIZERS.find(n => n.id === state.normalizer);
+    }
+
+    function selectedMetricObjects() {
+      return METRICS.filter(m => state.metrics.has(m.id));
+    }
+
+    function metricNamesForPresets() {
+      const names = [];
+      selectedMetricObjects().forEach(metric => {
+        metric.names.forEach(name => {
+          if (!names.includes(name)) names.push(name);
+        });
+      });
+      return names;
+    }
+
+    function recommendedExtras() {
+      const extras = [];
+      selectedModels().forEach(model => {
+        if (model.extra && !extras.includes(model.extra)) extras.push(model.extra);
+      });
+      return extras;
+    }
+
+    function installCommand() {
+      const extras = recommendedExtras();
+      if (!extras.length) return "pip install plantain2asr";
+      return `pip install plantain2asr[${extras.join(",")}]`;
+    }
+
+    function buildExperimentImports() {
+      const imports = new Set(["Experiment", "Models"]);
+      imports.add(selectedDataset().label);
+      const norm = selectedNormalizer();
+      if (norm.code) imports.add(norm.label);
+      imports.add("Metrics");
+      if (state.artifacts["browser-report"]) imports.add("ReportServer");
+      return Array.from(imports);
+    }
+
+    function buildPipelineImports() {
+      const imports = new Set(["Models", "Metrics"]);
+      imports.add(selectedDataset().label);
+      const norm = selectedNormalizer();
+      if (norm.code) imports.add(norm.label);
+      if (state.artifacts["browser-report"]) imports.add("ReportServer");
+      return Array.from(imports);
+    }
+
+    function codeForPreset() {
+      const dataset = selectedDataset();
+      const models = selectedModels();
+      const normalizer = selectedNormalizer();
+      const metricObjs = selectedMetricObjects();
+      const metricNames = metricNamesForPresets();
+      const primaryMetric = metricNames.includes("WER") ? "WER" : (metricNames[0] || "WER");
+      const outputDir = `"outputs/${state.preset === "appendix" ? "appendix" : "study"}"`;
+
+      if (state.preset === "pipeline") {
+        const imports = buildPipelineImports().join(", ");
+        const modelLines = models.map(model => `ds >> ${model.code.replace("lambda: ", "")}`).join("\n");
+        const metricLine = metricObjs.length === 1
+          ? `norm >> ${metricObjs[0].code}`
+          : `norm >> Metrics.composite()`;
+        const reportLine = state.artifacts["browser-report"]
+          ? `\nReportServer(norm, audio_dir=${dataset.audioDir}).serve()`
+          : "";
+        const pandasLine = state.artifacts["pandas"]
+          ? `\ndf = norm.to_pandas()\nprint(df.groupby("model").mean(numeric_only=True))`
+          : "";
+        return `from plantain2asr import ${imports}\n\n` +
+          `ds = ${dataset.code}\n${modelLines}\n\n` +
+          (normalizer.code ? `norm = ds >> ${normalizer.code}\n` : `norm = ds\n`) +
+          `${metricLine}${pandasLine}${reportLine}\n`;
+      }
+
+      const imports = buildExperimentImports().join(", ");
+      const modelBlock = models.map(model => `        ${model.code},`).join("\n");
+      const metricBlock = metricObjs.length === 1
+        ? `        ${metricObjs[0].code},`
+        : metricObjs.map(metric => `        ${metric.code},`).join("\n");
+      const normalizerBlock = normalizer.code ? normalizer.code : "None";
+      const base = `from plantain2asr import ${imports}\n\n` +
+        `ds = ${dataset.code}\n\n` +
+        `study = Experiment(\n` +
+        `    dataset=ds,\n` +
+        `    models=[\n${modelBlock}\n    ],\n` +
+        `    normalizer=${normalizerBlock},\n` +
+        `    metrics=[\n${metricBlock}\n    ],\n` +
+        `)\n\n`;
+
+      if (state.preset === "compare") {
+        return base +
+          `report = study.compare_on_corpus(\n` +
+          `    metrics=${JSON.stringify(metricNames)},\n` +
+          `    primary_metric="${primaryMetric}",\n` +
+          `)\n\n` +
+          `print(report["leaderboard"])\n`;
+      }
+
+      if (state.preset === "browser-report") {
+        return base +
+          `study.evaluate()\n` +
+          `study.report(audio_dir=${dataset.audioDir}).serve()\n`;
+      }
+
+      if (state.preset === "thesis") {
+        return base +
+          `tables = study.prepare_thesis_tables(\n` +
+          `    output_dir=${outputDir},\n` +
+          `    metrics=${JSON.stringify(metricNames)},\n` +
+          `    primary_metric="${primaryMetric}",\n` +
+          `)\n\n` +
+          `print(tables["leaderboard_csv"])\n`;
+      }
+
+      return base +
+        `bundle = study.export_appendix_bundle(\n` +
+        `    output_dir=${outputDir},\n` +
+        `    metrics=${JSON.stringify(metricNames)},\n` +
+        `    primary_metric="${primaryMetric}",\n` +
+        `    include_benchmark=${state.artifacts["benchmark"] ? "True" : "False"},\n` +
+        `    include_static_report=${state.artifacts["static-report"] ? "True" : "False"},\n` +
+        `)\n\n` +
+        `print(bundle["report_html"])\n`;
+    }
+
+    function routeLabel() {
+      return selectedPreset().route;
+    }
+
+    function artifactLabels() {
+      const labels = [];
+      if (state.preset === "compare") {
+        labels.push("comparison", "leaderboard", "summary");
+      }
+      if (state.preset === "thesis") {
+        labels.push("results.csv", "summary.csv", "leaderboard.csv", "error_cases.csv");
+      }
+      if (state.preset === "appendix") {
+        labels.push("results.csv", "summary.csv", "leaderboard.csv", "error_cases.csv");
+      }
+      if (state.artifacts["static-report"]) labels.push("report.html");
+      if (state.artifacts["browser-report"]) labels.push("browser report");
+      if (state.artifacts["benchmark"]) labels.push("benchmark.csv");
+      if (state.artifacts["pandas"]) labels.push("pandas DataFrame");
+      return [...new Set(labels)];
+    }
+
+    function chainNodes() {
+      const dataset = selectedDataset();
+      const models = selectedModels().map(m => m.label).join(", ");
+      const normalizer = selectedNormalizer().label;
+      const metrics = selectedMetricObjects().map(m => m.label).join(", ");
+      const outputs = artifactLabels().join(", ");
+      return [
+        { t:"Dataset", v:dataset.label },
+        { t:"Models", v:models },
+        { t:"Normalizer", v:normalizer },
+        { t:"Metrics", v:metrics },
+        { t:"Outputs", v:outputs || "Python objects" }
+      ];
+    }
+
+    function guideSteps() {
+      const preset = selectedPreset();
+      const dataset = selectedDataset();
+      const normalizer = selectedNormalizer();
+      return [
+        {
+          title: "Загрузить датасет",
+          text: `${dataset.label} станет единственной точкой входа для данных. ${dataset.explanation}`
+        },
+        {
+          title: "Запустить модели",
+          text: "Конструктор рекомендует запускать модели через Experiment preset, если вы не хотите вручную собирать и поддерживать pipeline."
+        },
+        {
+          title: "Нормализовать и посчитать метрики",
+          text: normalizer.code
+            ? `Будет использован ${normalizer.label}, после чего метрики посчитаются на нормализованном view.`
+            : "Нормализация не включена, поэтому метрики будут считаться на исходном тексте."
+        },
+        {
+          title: "Получить результат",
+          text: `Выбранный маршрут: ${preset.route}. Он лучше всего подходит под вашу цель: ${preset.hint}.`
+        }
+      ];
+    }
+
+    function renderOutputs() {
+      document.getElementById("generated-code").textContent = codeForPreset();
+      document.getElementById("install-command").textContent = installCommand();
+      document.getElementById("summary-route").textContent = routeLabel();
+      document.getElementById("summary-install").textContent = recommendedExtras().join(", ") || "core";
+      document.getElementById("summary-complexity").textContent = selectedPreset().complexity;
+      document.getElementById("summary-artifacts").textContent = artifactLabels().slice(0, 3).join(" + ") || "Python objects";
+      document.getElementById("builder-note").textContent = selectedPreset().note;
+
+      const chain = chainNodes();
+      document.getElementById("chain-visual").innerHTML = chain.map((node, idx) => `
+        <div class="chain-node">
+          <div class="t">${node.t}</div>
+          <div class="v">${node.v}</div>
+        </div>
+        ${idx < chain.length - 1 ? '<div class="arrow">→</div>' : ''}
+      `).join("");
+
+      document.getElementById("guide-steps").innerHTML = guideSteps().map((step, idx) => `
+        <div class="guide-step">
+          <div class="num">Шаг ${idx + 1}</div>
+          <strong>${step.title}</strong>
+          <p>${step.text}</p>
+        </div>
+      `).join("");
+
+      document.getElementById("artifact-list").innerHTML = artifactLabels().map(item => `
+        <div class="artifact">${item}</div>
+      `).join("");
+    }
+
+    function renderArtifactControls() {
+      ["static-report", "browser-report", "benchmark", "pandas"].forEach(id => {
+        const input = document.getElementById(`artifact-${id}`);
+        input.checked = state.artifacts[id];
+        input.onchange = () => {
+          state.artifacts[id] = input.checked;
+          renderOutputs();
+        };
+      });
+    }
+
+    function renderAll() {
+      renderPresetChoices();
+      renderModelChoices();
+      renderMetricChoices();
+      renderSelectors();
+      renderArtifactControls();
+      renderOutputs();
+    }
+
+    document.getElementById("copy-code").addEventListener("click", async () => {
+      const text = document.getElementById("generated-code").textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById("copy-code").textContent = "Скопировано";
+        setTimeout(() => {
+          document.getElementById("copy-code").textContent = "Скопировать";
+        }, 1200);
+      } catch (_) {
+        document.getElementById("copy-code").textContent = "Не удалось";
+      }
+    });
+
+    applyPresetDefaults();
+    renderAll();
+  </script>
+</body>
+</html>

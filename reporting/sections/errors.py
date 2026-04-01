@@ -81,7 +81,13 @@ class ErrorFrequencySection(BaseSection):
 
                     for chunk in out.alignments[0]:
                         t  = chunk.type
-                        ex = {"ref": ref, "hyp": hyp, "audio": sample.id, "model": model}
+                        ex = {
+                            "ref": ref,
+                            "hyp": hyp,
+                            "audio": sample.id,
+                            "audio_path": sample.audio_path,
+                            "model": model,
+                        }
 
                         if t == "delete":
                             for w in ref_words[chunk.ref_start_idx:chunk.ref_end_idx]:
@@ -259,7 +265,7 @@ function openExamples(idx) {
         </div>
       </div>
       ${ex.audio ? `<div class="ex-audio">
-        <audio src="/audio/${encodeURIComponent(ex.audio)}" controls preload="none"></audio>
+        <audio src="${audioSrc(ex.audio, ex.audio_path)}" controls preload="none"></audio>
       </div>` : ''}
     </div>`;
   }).join('');

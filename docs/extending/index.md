@@ -1,6 +1,8 @@
 # Extending plantain2asr
 
-plantain2asr is designed to be extended. Every component — models, normalizers, metrics, report sections — is a subclass of a simple abstract base class.
+plantain2asr is designed to be extended. Every component - models, normalizers, metrics, report sections - is a subclass of a simple abstract base class.
+
+If you are only trying to run comparisons or export research artifacts, stop here and use the `Interactive Constructor` or `Experiment` first. This section is for custom component authors.
 
 ```mermaid
 graph TD

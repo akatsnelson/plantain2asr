@@ -22,10 +22,19 @@ jobs:
           python-version: "3.11"
 
       - name: Install build tools
-        run: pip install build
+        run: python -m pip install build twine pytest -r docs/requirements.txt
 
       - name: Build package
         run: python -m build
+
+      - name: Validate package metadata
+        run: twine check dist/*
+
+      - name: Run core smoke tests
+        run: python -m pytest -m core
+
+      - name: Build docs in strict mode
+        run: mkdocs build --strict
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

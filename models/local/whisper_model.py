@@ -1,33 +1,56 @@
-import torch
 import warnings
 from pathlib import Path
-from typing import Union, List
+from typing import List, Union
 from ..base import BaseASRModel
+from ...utils.logging import get_logger
+
+try:
+    import torch
+except ImportError:
+    torch = None
 
 try:
     from transformers import WhisperProcessor, WhisperForConditionalGeneration
     import librosa
 except ImportError:
     WhisperProcessor = None
+    WhisperForConditionalGeneration = None
+    librosa = None
+
+_WHISPER_INSTALL_HINT = (
+    "Install one of the supported extras:\n"
+    "  pip install plantain2asr[whisper]\n"
+    "  pip install plantain2asr[asr-cpu]\n"
+    "  pip install plantain2asr[asr-gpu]"
+)
+
+logger = get_logger(__name__)
+
+
+def _resolve_torch_device(device: str) -> str:
+    from ...utils.device import resolve_torch_device
+
+    return resolve_torch_device(
+        device, backend_name="Whisper", install_hint=_WHISPER_INSTALL_HINT,
+    )
 
 
 class WhisperModel(BaseASRModel):
     def __init__(
         self,
         model_name: str = "bond005/whisper-large-v3-ru-podlodka",
-        device: str = "cuda",
+        device: str = "auto",
         batch_size: int = 16,
     ):
-        if WhisperProcessor is None:
-            raise ImportError("transformers or librosa not installed")
+        if WhisperProcessor is None or WhisperForConditionalGeneration is None or librosa is None:
+            raise ImportError(f"Whisper dependencies are not installed. {_WHISPER_INSTALL_HINT}")
 
-        if device == "cuda" and not torch.cuda.is_available():
-            device = "mps" if torch.backends.mps.is_available() else "cpu"
-        self.device = device
+        self.device = _resolve_torch_device(device)
+        self.model_name = model_name
         self.batch_size = batch_size
         self._name = f"Whisper-{model_name.split('/')[-1]}"
 
-        print(f"📥 Loading Whisper ({model_name}) on {self.device}...")
+        logger.info("Loading Whisper (%s) on %s", model_name, self.device)
         self.processor = WhisperProcessor.from_pretrained(model_name)
 
         # bf16 быстрее fp16 на Ampere+ (RTX 30xx/40xx/50xx)
@@ -44,11 +67,18 @@ class WhisperModel(BaseASRModel):
             torch_dtype=dtype,
         ).to(self.device)
         self.model.eval()
-        print(f"   dtype={dtype}, batch_size={batch_size}")
+        logger.info("Whisper dtype=%s batch_size=%s", dtype, batch_size)
 
     @property
     def name(self) -> str:
         return self._name
+
+    def training_not_supported_reason(self) -> str:
+        return (
+            f"{self.name} does not support plantain-style fine-tuning yet. Whisper needs a "
+            "separate seq2seq training backend, so the current train API intentionally fails "
+            "fast instead of pretending that CTC training is available."
+        )
 
     def _load_audio(self, path: Union[str, Path]) -> "np.ndarray":
         audio, _ = librosa.load(str(path), sr=16000)

@@ -23,15 +23,16 @@ class TrainingConfig:
     weight_decay: float = 0.005
     
     # Оптимизация и железо
-    fp16: bool = True  # Использовать mixed precision (рекомендуется для GPU)
+    # Часть полей пока носит advisory-характер для custom trainer и валидируется при запуске.
+    fp16: bool = True
     dataloader_num_workers: int = 0  # 0 для стабильности в Jupyter/macOS, >0 для скорости
     
     # Логирование и сохранение
     logging_steps: int = 100
     save_steps: int = 500
     eval_steps: int = 500
-    save_total_limit: int = 2  # Хранить только 2 последних чекпоинта
+    save_total_limit: int = 2
     
     # ASR специфика
-    group_by_length: bool = True  # Группировать по длине аудио (ускоряет обучение)
-    gradient_checkpointing: bool = True  # Экономит память ценой скорости
+    group_by_length: bool = True
+    gradient_checkpointing: bool = True

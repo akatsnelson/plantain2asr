@@ -33,6 +33,7 @@ from typing import TYPE_CHECKING, List, Optional
 from urllib.parse import unquote
 
 from ..core.processor import Processor
+from ..utils.logging import get_logger
 from .builder import ReportBuilder
 from .template import build_html
 
@@ -40,10 +41,13 @@ if TYPE_CHECKING:
     from ..dataloaders.base import BaseASRDataset
     from .sections.base import BaseSection
 
+logger = get_logger(__name__)
+
 
 def _default_sections() -> List['BaseSection']:
-    from .sections import MetricsSection, ErrorFrequencySection, DiffSection
-    return [MetricsSection(), ErrorFrequencySection(), DiffSection()]
+    from .sections import default_sections
+
+    return default_sections()
 
 
 class ReportServer(Processor):
@@ -106,10 +110,12 @@ class ReportServer(Processor):
 
         if self.dataset is None:
             raise ValueError("dataset is required; pass it to ReportServer() or serve()")
+        if len(self.dataset) == 0:
+            raise ValueError("ReportServer cannot serve an empty dataset.")
 
         self._builder = ReportBuilder(self.dataset, sections=self.sections)
 
-        print(f"🌱 plantain2asr report server starting at http://localhost:{self.port}")
+        logger.info("plantain2asr report server starting at http://localhost:%s", self.port)
 
         server = self       # захват для замыкания
         html   = self._html
@@ -242,7 +248,7 @@ class ReportServer(Processor):
         if self.open_browser:
             webbrowser.open(url)
 
-        print(f"✅ Serving at {url}  (Ctrl+C or .stop() to quit)")
+        logger.info("Serving report server at %s", url)
         return self
 
     def stop(self) -> None:
@@ -251,7 +257,7 @@ class ReportServer(Processor):
             self._server.shutdown()
             self._server = None
             self._thread = None
-            print("⛔ Server stopped.")
+            logger.info("Report server stopped")
 
     def restart(self) -> 'ReportServer':
         """Перезапускает сервер (удобно при обновлении датасета)."""

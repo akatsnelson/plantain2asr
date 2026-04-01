@@ -2,98 +2,107 @@
 
 **Фреймворк для бенчмаркинга и анализа русскоязычных ASR-моделей.**
 
-Загрузите датасет, примените модели, нормализуйте, посчитайте метрики, исследуйте результаты — всё через единый пайплайн с оператором `>>`.
+Документация теперь построена по одному простому правилу: сначала самый простой вход, потом более низкоуровневые API только там, где они действительно нужны.
+
+## Рекомендуемый маршрут входа
+
+1. Откройте [Интерактивный конструктор](constructor.html), чтобы собрать цепочку визуально.
+2. Используйте `Experiment` для типовых исследовательских сценариев.
+3. Переходите к `>>`-пайплайну, когда нужна полная модульность и контроль.
+
+## Что даёт plantain2asr
+
+- Локальные и облачные ASR-модели под единым интерфейсом
+- Автоматический выбор устройства там, где это поддерживается
+- Представления датасета вместо мутаций "на месте"
+- Встроенные нормализаторы, метрики, отчёты, анализ и бенчмарки
+- Готовые экспортные сценарии для диссертации и приложений
+- Модульную архитектуру для своих моделей, метрик и вкладок отчёта
+
+## Самый полезный короткий пример
 
 ```python
-from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics, ReportServer
+from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
 
-ds   = GolosDataset("data/golos")       # автозагрузка при первом запуске
-ds   >> Models.GigaAM_v3()             # инференс (кешируется)
-ds   >> Models.Whisper()               # добавьте другие модели для сравнения
+dataset = GolosDataset("data/golos")
 
-norm = ds >> SimpleNormalizer()         # нормализация (е/ё, пунктуация, регистр)
-norm >> Metrics.composite()            # WER, CER, MER, WIL, Accuracy…
+experiment = Experiment(
+    dataset=dataset,
+    models=[Models.GigaAM_v3(), Models.Whisper()],
+    normalizer=SimpleNormalizer(),
+)
 
-ReportServer(norm, audio_dir="data/golos").serve()  # открыть отчёт в браузере
+experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
+experiment.save_report_html("artifacts/report.html")
 ```
-
----
-
-## Как это работает
-
-```mermaid
-graph LR
-    A[Датасет] -->|">> Model()"| B[Инференс]
-    B -->|">> Normalizer()"| C[Нормализованный вид]
-    C -->|">> Metrics()"| D[Метрики по семплам]
-    D -->|"ReportServer"| E[Интерактивный отчёт]
-```
-
-Каждый шаг создаёт новый датасет — оригинал никогда не изменяется.
-Можно ветвить, фильтровать и сравнивать на любом этапе.
-
----
 
 ## Установка
 
-=== "Только ядро (без GPU)"
+=== "Ядро"
     ```bash
     pip install plantain2asr
     ```
-    Включает: загрузку датасетов, расчёт WER/CER, сервер отчётов.
+    Включает датасеты, нормализацию, метрики, экспорты и отчёты.
 
-=== "С моделями GigaAM"
+=== "Типовой локальный CPU-стек"
+    ```bash
+    pip install plantain2asr[asr-cpu]
+    ```
+
+=== "Типовой локальный GPU-стек"
+    ```bash
+    pip install plantain2asr[asr-gpu]
+    ```
+
+=== "Extras по backend-ам"
     ```bash
     pip install plantain2asr[gigaam]
-    ```
-
-=== "С Whisper"
-    ```bash
     pip install plantain2asr[whisper]
+    pip install plantain2asr[vosk]
+    pip install plantain2asr[canary]
+    pip install plantain2asr[tone]
     ```
 
-=== "С инструментами анализа"
+=== "Исследовательский анализ"
     ```bash
     pip install plantain2asr[analysis]
     ```
-    Включает: pandas, BERTScore, POS-анализ, bootstrap-доверительные интервалы.
 
 === "Всё сразу"
     ```bash
     pip install plantain2asr[all]
     ```
 
----
+Логика выбора устройства: сначала CUDA, затем MPS, затем CPU, если backend это поддерживает.
 
-## Поддерживаемые модели
+## Ментальная модель
 
-| Модель | Extra | Устройство |
-|---|---|---|
-| GigaAM v3 (e2e-rnnt, e2e-ctc, rnnt, ctc) | `gigaam` | CUDA / MPS / CPU |
-| GigaAM v2 (v2-rnnt, v2-ctc) | `gigaam` | CUDA / MPS / CPU |
-| Whisper large-v3 (HuggingFace) | `whisper` | CUDA / MPS / CPU |
-| T-one RussianTone | `gigaam` | CUDA |
-| Vosk | `vosk` | CPU |
-| NVIDIA Canary | `canary` | CUDA |
-| SaluteSpeech API | — | облако |
+```mermaid
+graph LR
+    A[Датасет] --> B[Модели]
+    B --> C[Нормализатор]
+    C --> D[Метрики]
+    D --> E[Отчёты и анализ]
+    E --> F[Экспорты и артефакты для диссертации]
+```
 
----
+Все эти шаги по-прежнему компонуются как пайплайн. `Experiment` просто оркестрирует те же строительные блоки для типовых исследовательских сценариев.
 
-## Расширение
+## Поддерживаемые семейства моделей
 
-plantain2asr построен на четырёх абстрактных базовых классах.
-Унаследуйтесь от любого — и он автоматически встраивается в пайплайн.
+| Семейство | Типичный вызов | Extra | Устройство |
+|---|---|---|---|
+| GigaAM v3 | `Models.GigaAM_v3()` | `gigaam` | CUDA / MPS / CPU |
+| GigaAM v2 | `Models.GigaAM_v2()` | `gigaam` | CUDA / MPS / CPU |
+| Whisper | `Models.Whisper()` | `whisper` | CUDA / MPS / CPU |
+| T-one | `Models.Tone()` | `tone` | CUDA / CPU |
+| Vosk | `Models.Vosk(...)` | `vosk` | CPU |
+| Canary | `Models.Canary()` | `canary` | CUDA |
+| SaluteSpeech | `Models.SaluteSpeech()` | none | облако |
 
-| Базовый класс | Что добавляет |
-|---|---|
-| `BaseNormalizer` | Правила нормализации текста |
-| `BaseASRModel` | Новая ASR-модель |
-| `BaseMetric` | Новая метрика качества |
-| `BaseSection` | Новая вкладка в отчёте |
+## Если вы заходите впервые
 
-→ [Руководство по расширению](extending/index.md)
-
----
-
-!!! tip "Следующий шаг"
-    Перейдите к [Быстрому старту](quickstart.md) для полного рабочего примера.
+- Идите в [Интерактивный конструктор](constructor.html), если хотите быстро собрать цепочку и сразу увидеть код.
+- Идите в [Быстрый старт](quickstart.md), если нужен канонический рабочий сценарий.
+- Идите в [Справочник API](api/dataloaders.md), если вы уже знаете, какой блок вам нужен.
+- Идите в [Расширение](extending/index.md), если хотите добавить свои компоненты.

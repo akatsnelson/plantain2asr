@@ -7,218 +7,142 @@
 
 **Benchmarking and analysis framework for Russian ASR models.**
 
-Pipeline API: load a dataset, apply models, normalize text, compute metrics, explore results — all in one consistent `>>` interface.
+`plantain2asr` lets you compare ASR backends, normalize transcripts, compute metrics, inspect errors, benchmark latency, and export research artifacts without losing the underlying composable pipeline model.
 
-```python
-from plantain2asr import GolosDataset, Models, DagrusNormalizer, Metrics, ReportServer
+## Start Here
 
-ds   = GolosDataset("data/golos")          # auto-downloads if missing
-ds   >> Models.GigaAM_v3()                 # run inference (results cached)
-norm = ds >> DagrusNormalizer()            # normalize text — creates a view
-norm >> Metrics.composite()               # WER, CER, MER, WIL, WIP, Accuracy…
-ReportServer(norm, audio_dir="data/golos").serve()  # interactive browser report
-```
+There are three entry points, ordered from simplest to most flexible:
 
----
+1. **Interactive Constructor**: open the docs constructor and assemble a ready-made chain visually.
+2. **`Experiment` facade**: run common research scenarios with a few high-level calls.
+3. **`>>` pipeline API**: build custom chains from datasets, models, normalizers, metrics, reports, and analyzers.
+
+Docs: [akatsnelson.github.io/plantain2asr](https://akatsnelson.github.io/plantain2asr)
 
 ## Install
 
 ```bash
-# Core — dataset loading + WER/CER metrics (no GPU required)
+# Core only: datasets, normalization, metrics, reports
 pip install plantain2asr
 
-# + GigaAM v2/v3 and T-one models
+# Common CPU-only local stack
+pip install plantain2asr[asr-cpu]
+
+# Common GPU-ready local stack
+pip install plantain2asr[asr-gpu]
+
+# Individual model families
 pip install plantain2asr[gigaam]
-
-# + Whisper (HuggingFace)
 pip install plantain2asr[whisper]
+pip install plantain2asr[vosk]
+pip install plantain2asr[canary]
+pip install plantain2asr[tone]
 
-# + deep analysis tools (pandas, bert-score, POS-analysis…)
+# Research analysis tools
 pip install plantain2asr[analysis]
 
-# Everything at once
+# Everything
 pip install plantain2asr[all]
 ```
 
----
+Device selection is automatic where supported: NVIDIA GPU first, then MPS, then CPU.
 
-## Quick Start
+## Recommended Quick Start
 
-### Load a dataset
+For most research workflows, start with `Experiment`:
 
 ```python
-from plantain2asr import GolosDataset, DagrusDataset, NeMoDataset
+from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
 
-# GOLOS test set — auto-downloads on first run (~2.5 GB)
+dataset = GolosDataset("data/golos")
+
+experiment = Experiment(
+    dataset=dataset,
+    models=[
+        Models.GigaAM_v3(),
+        Models.Whisper(),
+    ],
+    normalizer=SimpleNormalizer(),
+)
+
+summary = experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
+leaderboard = experiment.leaderboard(metric="WER")
+
+experiment.save_report_html("artifacts/report.html")
+experiment.save_leaderboard_csv("artifacts/leaderboard.csv", metric="WER")
+
+print(summary["metrics_by_model"])
+print(leaderboard)
+```
+
+Use preset scenarios when you need ready-made research outputs:
+
+- `Experiment.compare_on_corpus()` for straightforward model comparison
+- `Experiment.prepare_thesis_tables()` for publication-ready aggregate tables
+- `Experiment.export_appendix_bundle()` for a full appendix bundle with exports and optional static report
+- `Experiment.benchmark_models()` for latency, throughput, and RTF measurement
+
+## Advanced Pipeline API
+
+If you want full composability, the canonical chain is still:
+
+```python
+from plantain2asr import GolosDataset, Models, DagrusNormalizer, Metrics, ReportServer
+
 ds = GolosDataset("data/golos")
+ds >> Models.GigaAM_v3()
+ds >> Models.Whisper()
 
-# DaGRuS (Dagestani Russian Speech corpus)
-ds = DagrusDataset("data/dagrus")
+norm = ds >> DagrusNormalizer()
+norm >> Metrics.composite()
 
-# Any NeMo-format JSONL manifest
-ds = NeMoDataset("data/my_dataset")
+ReportServer(norm, audio_dir="data/golos").serve()
 ```
 
-### Apply a model
+Pipeline rules:
 
-```python
-from plantain2asr import Models
+- Every step returns a dataset or processor-compatible object.
+- Normalization creates a new dataset view and does not mutate the original.
+- Model results are cached and safe to resume.
+- You can branch at any point with `filter()`, `take()`, or cloned views.
 
-model = Models.GigaAM_v3()                        # GigaAM v3 e2e-RNNT (default)
-ds >> model
-```
+## Supported Models
 
-Results accumulate in `sample.asr_results[model.name]`. Run multiple models on the same dataset to compare side by side.
-
-Available models:
-
-| Call | `model.name` stored | Extra | Device |
+| Call | Stored name | Extra | Device |
 |---|---|---|---|
 | `Models.GigaAM_v3()` | `GigaAM-v3-e2e_rnnt` | `gigaam` | CUDA / MPS / CPU |
 | `Models.GigaAM_v3(model_name="e2e_ctc")` | `GigaAM-v3-e2e_ctc` | `gigaam` | CUDA / MPS / CPU |
 | `Models.GigaAM_v3(model_name="rnnt")` | `GigaAM-v3-rnnt` | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="ctc")` | `GigaAM-v3-ctc` | `gigaam` | CUDA / MPS / CPU |
 | `Models.GigaAM_v2(model_name="v2_rnnt")` | `GigaAM-v2_rnnt` | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v2(model_name="v2_ctc")` | `GigaAM-v2_ctc` | `gigaam` | CUDA / MPS / CPU |
 | `Models.Whisper()` | `Whisper-whisper-large-v3-ru-podlodka` | `whisper` | CUDA / MPS / CPU |
-| `Models.Tone()` | `T-One` | `gigaam` | CUDA |
-| `Models.Vosk(model_path=…)` | `Vosk` | `vosk` | CPU |
+| `Models.Tone()` | `T-One` | `tone` | CUDA / CPU |
+| `Models.Vosk(model_path=...)` | `Vosk` | `vosk` | CPU |
 | `Models.Canary()` | `Canary-1B` | `canary` | CUDA |
-| `Models.SaluteSpeech()` | `SaluteSpeech` | — | cloud |
+| `Models.SaluteSpeech()` | `SaluteSpeech` | none | cloud |
 
-### Normalize text
+You can also resolve models by user-facing names with `Models.create(...)`, including case and separator variants such as `"gigaam_v3"`, `"GigaAM-v3"`, or `"tone"`.
 
-```python
-from plantain2asr import SimpleNormalizer, DagrusNormalizer
+## Typical Research Outputs
 
-# General Russian: lowercase, strip punctuation, ё→е
-norm = ds >> SimpleNormalizer()
-
-# DaGRuS-specific: handles [laugh], fillers (ага, угу), colloquialisms
-norm = ds >> DagrusNormalizer()
-```
-
-Normalization creates a new dataset **view** — `ds` stays untouched.
-
-### Compute metrics
-
-```python
-from plantain2asr import Metrics
-
-norm >> Metrics.composite()   # WER, CER, MER, WIL, WIP, Accuracy, IDR, LengthRatio
-```
-
-### Explore results
-
-```python
-# Pandas DataFrame — one row per (sample, model)
-df = norm.to_pandas()
-df.groupby("model")[["WER", "CER", "Accuracy"]].mean().sort_values("WER")
-
-# Interactive browser report: metrics table + error frequency + diff view
-from plantain2asr import ReportServer
-ReportServer(norm, audio_dir="data/golos").serve()
-```
-
-### Load pre-computed results
-
-Run inference on a GPU machine, transfer JSONL files, load here:
-
-```python
-ds.load_model_results("GigaAM-v3-e2e_rnnt", "results/GigaAM-v3-e2e_rnnt_results.jsonl")
-```
-
-JSONL format: one JSON object per line — `{"audio_path": "…", "hypothesis": "…", "time": 1.23}`
-
----
-
-## Filter and slice
-
-```python
-short    = ds.filter(lambda s: s.duration < 5.0)
-crowd    = ds.filter(lambda s: s.meta["subset"] == "crowd")
-farfield = ds.filter(lambda s: s.meta["subset"] == "farfield")
-top10    = ds.take(10)
-```
-
----
+- Metrics tables as Python dicts or pandas DataFrames
+- Leaderboards sorted by a chosen metric
+- Error-case tables and CSV exports
+- Static HTML reports for sharing without a running server
+- Appendix bundles with thesis-ready artifacts
+- Benchmark summaries for CPU, CUDA, or MPS
 
 ## Extending
 
-plantain2asr is built around four abstract base classes — subclass any of them.
+plantain2asr keeps the "plantain" idea of modular composition. If the built-in stack is not enough, extend one of the four base types:
 
-### Custom normalizer
+- `BaseASRModel`
+- `BaseNormalizer`
+- `BaseMetric`
+- `BaseSection`
 
-```python
-from plantain2asr import BaseNormalizer
-
-class MyNormalizer(BaseNormalizer):
-    def normalize_ref(self, text: str) -> str:
-        return text.lower().replace("ё", "е")
-
-    def normalize_hyp(self, text: str) -> str:
-        return text.lower().replace("ё", "е")
-
-norm = ds >> MyNormalizer()
-```
-
-### Custom model
-
-```python
-from plantain2asr.models.base import BaseASRModel
-
-class MyModel(BaseASRModel):
-    @property
-    def name(self) -> str:
-        return "MyModel"
-
-    def transcribe(self, audio_path: str) -> str:
-        return "transcribed text"
-
-ds >> MyModel()
-```
-
-### Custom metric
-
-```python
-from plantain2asr.metrics.base import BaseMetric
-
-class SyllableErrorRate(BaseMetric):
-    @property
-    def name(self) -> str:
-        return "SER"
-
-    def calculate(self, reference: str, hypothesis: str) -> float:
-        ref_syls = sum(1 for c in reference if c in "аеёиоуыэюя")
-        hyp_syls = sum(1 for c in hypothesis if c in "аеёиоуыэюя")
-        return abs(ref_syls - hyp_syls) / max(ref_syls, 1) * 100
-
-norm >> SyllableErrorRate()
-```
-
-### Custom report section
-
-```python
-from plantain2asr import BaseSection, ReportServer
-
-class LengthSection(BaseSection):
-    @property
-    def name(self) -> str:   return "length"
-    @property
-    def title(self) -> str:  return "Length Stats"
-    @property
-    def icon(self) -> str:   return "📏"
-
-    def compute(self, dataset) -> dict:
-        return {s.id: {"words": len(s.text.split())} for s in dataset}
-
-    def js_function(self) -> str:
-        return "function render_length() { /* your JS */ }"
-
-ReportServer(norm, sections=[LengthSection()]).serve()
-```
-
-Full documentation: [akatsnelson.github.io/plantain2asr](https://akatsnelson.github.io/plantain2asr)
-
----
+See the docs extending guides for custom components and implementation patterns.
 
 ## License
 

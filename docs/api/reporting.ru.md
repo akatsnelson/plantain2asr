@@ -1,8 +1,11 @@
 # Отчёты
 
-Интерактивный отчёт в браузере, запускается локально. Адрес: `http://localhost:8765`.
+Отчёты доступны в двух формах:
 
-## ReportServer
+- живой локальный browser-report через `ReportServer`
+- переносимый статический HTML через `ReportBuilder.save_static_html()`
+
+## `ReportServer`
 
 ```python
 from plantain2asr import ReportServer
@@ -13,16 +16,32 @@ ReportServer(dataset, audio_dir="data/golos", port=9000, sections=[MySection()])
 
 | Параметр | Тип | По умолчанию | Описание |
 |---|---|---|---|
-| `dataset` | `BaseASRDataset` | обязательный | Нормализованный датасет с метриками |
-| `audio_dir` | `str` | `""` | Корневая директория для раздачи аудио |
+| `dataset` | `BaseASRDataset` | обязательный | Обычно нормализованный датасет с метриками |
+| `audio_dir` | `str` | `""` | Корень для раздачи аудиофайлов |
 | `port` | `int` | `8765` | HTTP-порт |
-| `sections` | `list[BaseSection]` | `None` | Дополнительные вкладки после встроенных |
+| `sections` | `list[BaseSection]` | `None` | Дополнительные вкладки после стандартных |
 
-Встроенные вкладки: **Метрики**, **Частота ошибок**, **Diff**.
+Стандартные вкладки:
 
----
+- `Metrics`
+- `Error Frequency`
+- `Diff`
 
-## BaseSection
+## `ReportBuilder`
+
+```python
+from plantain2asr.reporting.builder import ReportBuilder
+
+builder = ReportBuilder(dataset)
+data = builder.build()
+builder.save_static_html("artifacts/report.html")
+```
+
+`save_static_html()` нужен, когда отчёт надо открыть без локального сервера.
+
+Именно на него также опирается `Experiment.save_report_html()`.
+
+## `BaseSection`
 
 ```python
 from plantain2asr import BaseSection
@@ -31,30 +50,31 @@ from plantain2asr import BaseSection
 ```python
 class BaseSection(ABC):
     @property
-    def name(self) -> str: ...     # уникальный id
+    def name(self) -> str: ...
     @property
-    def title(self) -> str: ...    # заголовок вкладки
+    def title(self) -> str: ...
     @property
-    def icon(self) -> str: ...     # emoji-иконка
+    def icon(self) -> str: ...
 
-    def compute(self, dataset) -> dict: ...    # вызывается при старте → JSON
-    def js_function(self) -> str: ...         # JS-строка с функцией render_{name}()
+    def compute(self, dataset) -> dict: ...
+    def js_function(self) -> str: ...
 
-    def panel_html(self) -> str: ...   # необязательный
-    def css(self) -> str: ...          # необязательный
+    def panel_html(self) -> str: ...
+    def css(self) -> str: ...
 ```
 
 → [Своя вкладка отчёта](../extending/custom_section.md)
 
----
+## Встроенные секции
 
-## Встроенные вкладки
+### `MetricsSection`
 
-### MetricsSection
-Таблица метрик с фильтром по модели.
+Сортируемая таблица метрик с фильтрацией по модели.
 
-### ErrorFrequencySection
-Топ замен/удалений/вставок по частоте. Клик по слову открывает примеры семплов с полным пословным diff и воспроизведением аудио.
+### `ErrorFrequencySection`
 
-### DiffSection
-Пословный diff эталона и гипотезы с воспроизведением аудио.
+Топ замен, вставок и удалений с drill-down в примеры и воспроизведением аудио.
+
+### `DiffSection`
+
+Пословное выравнивание эталона и гипотезы с доступом к аудио как в live-, так и в static-режиме.

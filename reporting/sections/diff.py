@@ -81,6 +81,7 @@ class DiffSection(BaseSection):
             samples_out.append({
                 "id":     sample.id,
                 "audio":  sample.id,
+                "audio_path": sample.audio_path,
                 "ref":    ref,
                 "models": models_data,
             })
@@ -196,7 +197,7 @@ function render_diff() {
     }).join('');
 
     const audioTag = s.audio
-      ? `<div class="s-audio"><audio src="/audio/${encodeURIComponent(s.audio)}" controls preload="none"></audio></div>`
+      ? `<div class="s-audio"><audio src="${audioSrc(s.audio, s.audio_path)}" controls preload="none"></audio></div>`
       : '';
 
     return `<div class="s-card">

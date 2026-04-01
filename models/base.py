@@ -5,9 +5,12 @@ import time
 import copy
 from ..dataloaders.types import AudioSample
 from ..core.processor import Processor
+from ..utils.logging import get_logger
 
 if TYPE_CHECKING:
     from ..dataloaders.base import BaseASRDataset
+
+logger = get_logger(__name__)
 
 
 class BaseASRModel(Processor):
@@ -29,6 +32,28 @@ class BaseASRModel(Processor):
         По умолчанию False — большинство моделей пунктуацию не выдают.
         """
         return False
+
+    @property
+    def supports_training(self) -> bool:
+        """True, если модель поддерживает online fine-tuning через train API."""
+        return False
+
+    @property
+    def training_backend(self) -> Optional[str]:
+        """
+        Тип поддерживаемого обучения.
+
+        Примеры:
+            - "ctc"
+            - "seq2seq"
+            - None (не поддерживается)
+        """
+        return None
+
+    def training_not_supported_reason(self) -> str:
+        return (
+            f"Model {self.name} does not support online fine-tuning in plantain2asr yet."
+        )
 
     @abstractmethod
     def transcribe(self, audio_path: Union[str, Path]) -> str:
@@ -97,7 +122,11 @@ class BaseASRModel(Processor):
                 )
                 
         except Exception as e:
-            print(f"⚠️ Batch processing failed for {self.name}, falling back to single sample: {e}")
+            logger.warning(
+                "Batch processing failed for %s, falling back to single-sample mode: %s",
+                self.name,
+                e,
+            )
             # Фоллбек на поштучную обработку
             for s in samples:
                 self.process_sample(s, inplace=True)
@@ -131,4 +160,4 @@ class BaseASRModel(Processor):
         Raises:
             NotImplementedError: Если модель не поддерживает дообучение.
         """
-        raise NotImplementedError(f"Model {self.name} does not support fine-tuning yet.")
+        raise NotImplementedError(self.training_not_supported_reason())

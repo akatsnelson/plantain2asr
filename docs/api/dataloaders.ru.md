@@ -1,85 +1,103 @@
 # Датасеты
 
+Датасеты - это основа библиотеки. Они хранят семплы, выводы моделей, метрики и export-ready представления.
+
 ## BaseASRDataset
 
-Базовый класс для всех датасетов. Предоставляет интеграцию с пайплайном, кеширование, фильтрацию и расчёт метрик.
-
-**Основные методы:**
-
-| Метод | Описание |
-|---|---|
-| `filter(fn)` | Возвращает новый датасет с семплами, удовлетворяющими предикату |
-| `take(n)` | Возвращает первые N семплов |
-| `to_pandas()` | Возвращает `pd.DataFrame` — одна строка на пару (семпл, модель) |
-| `load_model_results(model_name, jsonl_path)` | Загружает предвычисленные результаты инференса из JSONL-файла |
-| `clone()` | Поверхностная копия датасета |
-
-**Оператор пайплайна:**
-
 ```python
-result = dataset >> processor   # применяет модель / нормализатор / метрику
+from plantain2asr.dataloaders.base import BaseASRDataset
 ```
 
----
+Основные обязанности:
+
+- хранить объекты `AudioSample`
+- применять процессоры через `>>`
+- кешировать выводы моделей
+- отдавать табличные и экспортные представления
+- не позволять запускать бессмысленные сценарии на пустом датасете
+
+Наиболее полезные методы:
+
+| Метод | Что делает |
+|---|---|
+| `filter(fn)` | Возвращает отфильтрованное представление датасета |
+| `take(n)` | Возвращает первые `n` семплов |
+| `run_model(model)` | Запускает модель напрямую без `>>` |
+| `evaluate_metric(metric)` | Считает одну метрику напрямую |
+| `to_pandas()` | Возвращает таблицу: одна строка на `(семпл, модель)` |
+| `iter_results_rows()` | Итерирует плоские строки результатов |
+| `save_csv(path)` | Экспортирует строки результатов в CSV |
+| `save_excel(path)` | Экспортирует строки результатов в XLSX |
+| `summarize_by_model()` | Собирает агрегированные метрики по моделям |
+| `load_model_results(name, path)` | Загружает готовый JSONL с инференсом |
+
+Пайплайн-форма:
+
+```python
+dataset >> model
+dataset >> normalizer
+dataset >> metric
+```
 
 ## AudioSample
 
-Контейнер данных для одного аудиофайла.
-
-**Поля:**
+```python
+from plantain2asr.dataloaders.types import AudioSample
+```
 
 | Поле | Тип | Описание |
 |---|---|---|
-| `id` | `str` | Уникальный идентификатор |
-| `audio_path` | `str` | Абсолютный путь к аудиофайлу |
+| `id` | `str` | Уникальный идентификатор семпла |
+| `audio_path` | `str` | Путь к аудиофайлу |
 | `text` | `str` | Эталонная транскрипция |
 | `duration` | `float \| None` | Длительность в секундах |
-| `meta` | `dict` | Произвольные метаданные (напр. `{"subset": "crowd"}`) |
-| `asr_results` | `dict` | `{model_name: {"hypothesis": str, "metrics": dict, ...}}` |
+| `meta` | `dict` | Произвольные метаданные |
+| `asr_results` | `dict` | Гипотезы и метрики по моделям |
 
----
+## Встроенные загрузчики
 
-## DagrusDataset
+### `GolosDataset`
 
-Загрузчик корпуса DaGRuS (Дагестанская русская речь).
+```python
+from plantain2asr import GolosDataset
+
+ds = GolosDataset("data/golos")
+```
+
+| Параметр | Тип | По умолчанию | Описание |
+|---|---|---|---|
+| `root_dir` | `str` | обязательный | Директория хранения корпуса |
+| `limit` | `int \| None` | `None` | Необязательный лимит семплов |
+| `auto_download` | `bool` | `True` | Автозагрузка при отсутствии файлов |
+
+Типичное поле метаданных: `meta["subset"]` равно `"crowd"` или `"farfield"`.
+
+### `DagrusDataset`
 
 ```python
 from plantain2asr import DagrusDataset
+
 ds = DagrusDataset("data/dagrus")
 ```
 
 | Параметр | Тип | По умолчанию | Описание |
 |---|---|---|---|
-| `root_dir` | `str` | обязательный | Путь к корпусу |
-| `limit` | `int \| None` | `None` | Максимальное число семплов |
+| `root_dir` | `str` | обязательный | Корень корпуса |
+| `limit` | `int \| None` | `None` | Необязательный лимит семплов |
 
----
-
-## GolosDataset
-
-Загрузчик тестовой части корпуса GOLOS. Автозагружается при первом запуске.
+### `NeMoDataset`
 
 ```python
-from plantain2asr import GolosDataset
-ds = GolosDataset("data/golos")
-crowd = ds.filter(lambda s: s.meta["subset"] == "crowd")
+from plantain2asr import NeMoDataset
+
+ds = NeMoDataset("data/my_corpus")
 ```
 
 | Параметр | Тип | По умолчанию | Описание |
 |---|---|---|---|
-| `root_dir` | `str` | обязательный | Путь для хранения корпуса |
-| `limit` | `int \| None` | `None` | Максимальное число семплов |
-| `auto_download` | `bool` | `True` | Скачать, если директория не найдена |
+| `root_dir` | `str` | обязательный | Директория с `manifest.jsonl` |
+| `limit` | `int \| None` | `None` | Необязательный лимит семплов |
 
-Каждый семпл содержит `meta["subset"]` = `"crowd"` или `"farfield"`.
+## Когда вместо этого брать `Experiment`
 
----
-
-## NeMoDataset
-
-Загрузчик для датасетов в формате NeMo JSONL-манифеста.
-
-```python
-from plantain2asr import NeMoDataset
-ds = NeMoDataset("data/my_corpus")
-```
+Если нужен готовый исследовательский workflow, берите `Experiment` поверх датасета, а не оркестрируйте каждый низкоуровневый вызов вручную.

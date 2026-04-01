@@ -1,58 +1,66 @@
 # Models
 
-## Models factory
-
-Centralized access to all supported ASR models.
+## `Models` factory
 
 ```python
 from plantain2asr import Models
 ```
 
-**Available models:**
+The factory is the main entry point for built-in backends.
 
-| Factory method | Model | Extra |
-|---|---|---|
-| `Models.GigaAM_v3()` | GigaAM v3 e2e-RNNT (default) | `gigaam` |
-| `Models.GigaAM_v3(model_name="e2e_ctc")` | GigaAM v3 e2e-CTC | `gigaam` |
-| `Models.GigaAM_v3(model_name="rnnt")` | GigaAM v3 RNNT | `gigaam` |
-| `Models.GigaAM_v3(model_name="ctc")` | GigaAM v3 CTC | `gigaam` |
-| `Models.GigaAM_v2(model_name="v2_rnnt")` | GigaAM v2 RNNT | `gigaam` |
-| `Models.GigaAM_v2(model_name="v2_ctc")` | GigaAM v2 CTC | `gigaam` |
-| `Models.Whisper()` | Whisper large-v3 RU | `whisper` |
-| `Models.Tone()` | T-one RussianTone | `gigaam` |
-| `Models.Vosk(model_path=...)` | Vosk (offline, CPU) | `vosk` |
-| `Models.Canary()` | NVIDIA Canary | `canary` |
-| `Models.SaluteSpeech()` | SaluteSpeech cloud API | — |
+Supported calls:
 
-**Usage:**
+| Call | Backend | Extra | Device |
+|---|---|---|---|
+| `Models.GigaAM_v3()` | GigaAM v3 e2e-RNNT | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="e2e_ctc")` | GigaAM v3 e2e-CTC | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="rnnt")` | GigaAM v3 RNNT | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="ctc")` | GigaAM v3 CTC | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v2(model_name="v2_rnnt")` | GigaAM v2 RNNT | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v2(model_name="v2_ctc")` | GigaAM v2 CTC | `gigaam` | CUDA / MPS / CPU |
+| `Models.Whisper()` | Whisper large-v3 RU | `whisper` | CUDA / MPS / CPU |
+| `Models.Tone()` | T-one | `tone` | CUDA / CPU |
+| `Models.Vosk(model_path=...)` | Vosk | `vosk` | CPU |
+| `Models.Canary()` | NVIDIA Canary | `canary` | CUDA |
+| `Models.SaluteSpeech()` | SaluteSpeech API | none | cloud |
+
+The factory also supports flexible name resolution:
 
 ```python
-ds >> Models.GigaAM_v3()     # inference, results cached automatically
-ds >> Models.Whisper()        # add second model for comparison
+model = Models.create("gigaam-v3")
+model = Models.create("GigaAM_v3")
+model = Models.create("tone")
 ```
 
----
+Unknown names raise a helpful error with close suggestions.
 
-## BaseASRModel
+## Usage
 
-Abstract base class for all models. Subclass to add your own.
+```python
+ds >> Models.GigaAM_v3()
+ds >> Models.Whisper()
+```
+
+Model outputs are cached automatically and can be reused across later metric, report, and export steps.
+
+## `BaseASRModel`
 
 ```python
 from plantain2asr.models.base import BaseASRModel
 ```
 
-**Interface:**
-
 ```python
 class BaseASRModel(ABC):
     @property
-    def name(self) -> str: ...                           # unique model id
+    def name(self) -> str: ...
 
-    def transcribe(self, audio_path: str) -> str: ...    # single file
-    def transcribe_batch(self, paths: list) -> list: ... # batch (optional)
+    def transcribe(self, audio_path: str) -> str: ...
+    def transcribe_batch(self, paths: list) -> list: ...
 
     @property
-    def is_e2e(self) -> bool: return False               # True if model outputs punctuation
+    def is_e2e(self) -> bool: ...
 ```
 
-See [Custom Model](../extending/custom_model.md) for a full example.
+Training-capable models can additionally expose training metadata used by the training layer.
+
+See [Custom Model](../extending/custom_model.md) for extension patterns.

@@ -1,3 +1,4 @@
+import difflib
 from typing import List, Optional, TYPE_CHECKING
 from .base import BaseMetric
 from .composite import CompositeMetric
@@ -33,6 +34,15 @@ class Metrics:
         Metrics.composite(normalizer=SimpleNormalizer())
     """
 
+    @classmethod
+    def _unknown_metric_error(cls, name: str) -> ValueError:
+        available = cls.list()
+        suggestions = difflib.get_close_matches(name.lower(), available, n=3, cutoff=0.45)
+        suggestion_text = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
+        return ValueError(
+            f"Unknown metric '{name}'. Available: {', '.join(available)}.{suggestion_text}"
+        )
+
     _REGISTRY = {
         "wer":          WER,
         "cer":          CER,
@@ -59,7 +69,7 @@ class Metrics:
         key = name.lower()
         if key in cls._REGISTRY:
             return cls._REGISTRY[key](**kwargs)
-        raise ValueError(f"Unknown metric: '{name}'. Available: {cls.list()}")
+        raise cls._unknown_metric_error(name)
 
     @classmethod
     def composite(
@@ -81,12 +91,22 @@ class Metrics:
             names = ["wer", "cer", "mer", "wil", "wip", "accuracy", "idr", "length_ratio"]
 
         selected = []
+        unknown = []
         for name in names:
             key = name.lower()
             if key in cls._REGISTRY:
                 selected.append(cls._REGISTRY[key])
             else:
-                print(f"⚠️ Metric '{name}' not found. Skipping.")
+                unknown.append(name)
+
+        if unknown:
+            if len(unknown) == 1:
+                raise cls._unknown_metric_error(unknown[0])
+            raise ValueError(
+                "Unknown metrics: "
+                + ", ".join(unknown)
+                + f". Available: {', '.join(cls.list())}."
+            )
 
         return CompositeMetric(metrics=selected, normalizer=normalizer)
 

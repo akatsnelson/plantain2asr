@@ -1,37 +1,49 @@
 # Модели
 
-## Фабрика Models
-
-Централизованный доступ ко всем поддерживаемым ASR-моделям.
+## Фабрика `Models`
 
 ```python
 from plantain2asr import Models
 ```
 
-| Метод фабрики | Модель | Extra |
-|---|---|---|
-| `Models.GigaAM_v3()` | GigaAM v3 e2e-RNNT (по умолчанию) | `gigaam` |
-| `Models.GigaAM_v3(model_name="e2e_ctc")` | GigaAM v3 e2e-CTC | `gigaam` |
-| `Models.GigaAM_v3(model_name="rnnt")` | GigaAM v3 RNNT | `gigaam` |
-| `Models.GigaAM_v3(model_name="ctc")` | GigaAM v3 CTC | `gigaam` |
-| `Models.GigaAM_v2(model_name="v2_rnnt")` | GigaAM v2 RNNT | `gigaam` |
-| `Models.GigaAM_v2(model_name="v2_ctc")` | GigaAM v2 CTC | `gigaam` |
-| `Models.Whisper()` | Whisper large-v3 RU | `whisper` |
-| `Models.Tone()` | T-one RussianTone | `gigaam` |
-| `Models.Vosk(model_path=...)` | Vosk (офлайн, CPU) | `vosk` |
-| `Models.Canary()` | NVIDIA Canary | `canary` |
-| `Models.SaluteSpeech()` | SaluteSpeech API | — |
+Это главный вход в набор встроенных backend-ов.
+
+Поддерживаемые вызовы:
+
+| Вызов | Backend | Extra | Устройство |
+|---|---|---|---|
+| `Models.GigaAM_v3()` | GigaAM v3 e2e-RNNT | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="e2e_ctc")` | GigaAM v3 e2e-CTC | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="rnnt")` | GigaAM v3 RNNT | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v3(model_name="ctc")` | GigaAM v3 CTC | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v2(model_name="v2_rnnt")` | GigaAM v2 RNNT | `gigaam` | CUDA / MPS / CPU |
+| `Models.GigaAM_v2(model_name="v2_ctc")` | GigaAM v2 CTC | `gigaam` | CUDA / MPS / CPU |
+| `Models.Whisper()` | Whisper large-v3 RU | `whisper` | CUDA / MPS / CPU |
+| `Models.Tone()` | T-one | `tone` | CUDA / CPU |
+| `Models.Vosk(model_path=...)` | Vosk | `vosk` | CPU |
+| `Models.Canary()` | NVIDIA Canary | `canary` | CUDA |
+| `Models.SaluteSpeech()` | SaluteSpeech API | none | облако |
+
+Фабрика также поддерживает гибкое разрешение имён:
 
 ```python
-ds >> Models.GigaAM_v3()   # инференс, результаты кешируются автоматически
-ds >> Models.Whisper()      # добавить вторую модель для сравнения
+model = Models.create("gigaam-v3")
+model = Models.create("GigaAM_v3")
+model = Models.create("tone")
 ```
 
----
+Для неизвестного имени выбрасывается понятная ошибка с подсказками.
 
-## BaseASRModel
+## Использование
 
-Абстрактный базовый класс для всех моделей. Унаследуйтесь, чтобы добавить свою.
+```python
+ds >> Models.GigaAM_v3()
+ds >> Models.Whisper()
+```
+
+Выводы моделей автоматически кешируются и потом переиспользуются в метриках, отчётах и экспортах.
+
+## `BaseASRModel`
 
 ```python
 from plantain2asr.models.base import BaseASRModel
@@ -40,13 +52,15 @@ from plantain2asr.models.base import BaseASRModel
 ```python
 class BaseASRModel(ABC):
     @property
-    def name(self) -> str: ...                           # уникальный id модели
+    def name(self) -> str: ...
 
-    def transcribe(self, audio_path: str) -> str: ...    # один файл
-    def transcribe_batch(self, paths: list) -> list: ... # батч (необязательный)
+    def transcribe(self, audio_path: str) -> str: ...
+    def transcribe_batch(self, paths: list) -> list: ...
 
     @property
-    def is_e2e(self) -> bool: return False               # True если модель выдаёт пунктуацию
+    def is_e2e(self) -> bool: ...
 ```
+
+Модели, поддерживающие обучение, могут дополнительно раскрывать training-метаданные для train-слоя.
 
 → [Своя модель](../extending/custom_model.md)

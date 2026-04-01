@@ -38,6 +38,8 @@ class StripPunctNormalizer(BaseNormalizer):
 Использование:
 
 ```python
+from plantain2asr import Metrics
+
 norm = ds >> StripPunctNormalizer()
 norm >> Metrics.composite()
 ```
@@ -70,5 +72,8 @@ norm2 = norm1 >> AnnotatedCorpusNormalizer()   # применяется пове
 ```
 
 !!! tip "Полный пример"
-    Смотрите `plantain2asr/normalization/dagrus.py` — полноценная реализация с обработкой
-    аннотаций DaGRuS, слов-паразитов, коллоквиализмов и эквивалентности е/ё.
+    Смотрите реализацию в исходном коде репозитория:
+    [plantain2asr/normalization/dagrus.py](https://github.com/akatsnelson/plantain2asr/blob/main/plantain2asr/normalization/dagrus.py)
+
+    Это полноценная реализация с обработкой аннотаций DaGRuS, слов-паразитов,
+    коллоквиализмов и эквивалентности е/ё.

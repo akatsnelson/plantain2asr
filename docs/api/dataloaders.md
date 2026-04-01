@@ -1,55 +1,78 @@
 # Datasets
 
-## BaseASRDataset
+Datasets are the backbone of the library. They hold samples, model outputs, metrics, and export-ready views.
 
-Base class for all datasets. Provides pipeline integration, caching, filtering and metric computation.
+## BaseASRDataset
 
 ```python
 from plantain2asr.dataloaders.base import BaseASRDataset
 ```
 
-**Key methods:**
+Main responsibilities:
 
-| Method | Description |
+- store `AudioSample` objects
+- apply processors through `>>`
+- cache model outputs
+- expose export and tabular helpers
+- guard against empty-dataset workflows
+
+Most-used methods:
+
+| Method | What it does |
 |---|---|
-| `filter(fn)` | Returns new dataset with samples matching predicate |
-| `take(n)` | Returns first N samples |
-| `to_pandas()` | Returns `pd.DataFrame` with one row per (sample, model) |
-| `load_model_results(model_name, jsonl_path)` | Loads pre-computed inference results from JSONL file |
-| `clone()` | Shallow clone of the dataset |
+| `filter(fn)` | Returns a filtered dataset view |
+| `take(n)` | Returns the first `n` samples |
+| `run_model(model)` | Runs a model directly without writing pipeline syntax |
+| `evaluate_metric(metric)` | Computes one metric directly |
+| `to_pandas()` | Returns one row per `(sample, model)` |
+| `iter_results_rows()` | Iterates flattened result rows |
+| `save_csv(path)` | Exports flattened rows to CSV |
+| `save_excel(path)` | Exports flattened rows to XLSX |
+| `summarize_by_model()` | Builds aggregate metrics by model |
+| `load_model_results(name, path)` | Loads precomputed JSONL inference |
 
-**Pipeline operator:**
+Pipeline form:
 
 ```python
-result = dataset >> processor   # applies model / normalizer / metric
+dataset >> model
+dataset >> normalizer
+dataset >> metric
 ```
 
----
-
 ## AudioSample
-
-Data container for a single audio file.
 
 ```python
 from plantain2asr.dataloaders.types import AudioSample
 ```
 
-**Fields:**
-
 | Field | Type | Description |
 |---|---|---|
-| `id` | `str` | Unique identifier |
-| `audio_path` | `str` | Absolute path to audio file |
+| `id` | `str` | Unique sample identifier |
+| `audio_path` | `str` | Audio file path |
 | `text` | `str` | Reference transcript |
 | `duration` | `float \| None` | Duration in seconds |
-| `meta` | `dict` | Arbitrary metadata (e.g. `{"subset": "crowd"}`) |
-| `asr_results` | `dict` | `{model_name: {"hypothesis": str, "metrics": dict, ...}}` |
+| `meta` | `dict` | Arbitrary metadata |
+| `asr_results` | `dict` | Per-model hypotheses and metrics |
 
----
+## Built-in dataset loaders
 
-## DagrusDataset
+### `GolosDataset`
 
-Loader for the DaGRuS (Dagestani Russian Speech) corpus.
+```python
+from plantain2asr import GolosDataset
+
+ds = GolosDataset("data/golos")
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `root_dir` | `str` | required | Storage directory |
+| `limit` | `int \| None` | `None` | Optional sample cap |
+| `auto_download` | `bool` | `True` | Download automatically if missing |
+
+Typical metadata: `meta["subset"]` is `"crowd"` or `"farfield"`.
+
+### `DagrusDataset`
 
 ```python
 from plantain2asr import DagrusDataset
@@ -57,42 +80,12 @@ from plantain2asr import DagrusDataset
 ds = DagrusDataset("data/dagrus")
 ```
 
-**Constructor:**
-
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `root_dir` | `str` | required | Path to corpus root |
-| `limit` | `int \| None` | `None` | Max number of samples to load |
+| `root_dir` | `str` | required | Corpus root |
+| `limit` | `int \| None` | `None` | Optional sample cap |
 
----
-
-## GolosDataset
-
-Loader for the GOLOS test corpus. Auto-downloads on first run.
-
-```python
-from plantain2asr import GolosDataset
-
-ds = GolosDataset("data/golos")
-# filter by subset
-crowd = ds.filter(lambda s: s.meta["subset"] == "crowd")
-```
-
-**Constructor:**
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `root_dir` | `str` | required | Path where corpus is stored |
-| `limit` | `int \| None` | `None` | Max number of samples to load |
-| `auto_download` | `bool` | `True` | Download if directory not found |
-
-Each sample has `meta["subset"]` = `"crowd"` or `"farfield"`.
-
----
-
-## NeMoDataset
-
-Loader for datasets in NeMo JSONL manifest format.
+### `NeMoDataset`
 
 ```python
 from plantain2asr import NeMoDataset
@@ -100,9 +93,11 @@ from plantain2asr import NeMoDataset
 ds = NeMoDataset("data/my_corpus")
 ```
 
-**Constructor:**
-
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `root_dir` | `str` | required | Directory containing `manifest.jsonl` |
-| `limit` | `int \| None` | `None` | Max number of samples to load |
+| `root_dir` | `str` | required | Directory with `manifest.jsonl` |
+| `limit` | `int \| None` | `None` | Optional sample cap |
+
+## When to use `Experiment` instead
+
+If you want a ready-made research workflow, use `Experiment` on top of a dataset instead of orchestrating individual dataset calls by hand.

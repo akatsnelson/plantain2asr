@@ -1,4 +1,5 @@
-from typing import Optional, List, Dict, Any
+import difflib
+from typing import Optional, List
 from .base import BaseASRModel
 
 class Models:
@@ -9,22 +10,62 @@ class Models:
     """
 
     @staticmethod
-    def list() -> List[str]:
-        """Возвращает список доступных для создания моделей (названия методов)"""
+    def _canonical_names() -> List[str]:
         return [
             "GigaAM_v3",
-            "GigaAM_v2", 
+            "GigaAM_v2",
             "Whisper",
             "Vosk",
             "Canary",
             "Tone",
-            "SaluteSpeech"
+            "SaluteSpeech",
         ]
+
+    @classmethod
+    def _aliases(cls) -> dict:
+        aliases = {}
+        for canonical in cls._canonical_names():
+            normalized = canonical.lower().replace("-", "").replace("_", "")
+            aliases[canonical] = canonical
+            aliases[canonical.lower()] = canonical
+            aliases[normalized] = canonical
+        aliases.update(
+            {
+                "gigaamv3": "GigaAM_v3",
+                "gigaamv2": "GigaAM_v2",
+                "gigaam-v3": "GigaAM_v3",
+                "gigaam-v2": "GigaAM_v2",
+                "salute": "SaluteSpeech",
+                "salutespeech": "SaluteSpeech",
+            }
+        )
+        return aliases
+
+    @classmethod
+    def _resolve_name(cls, name: str) -> str:
+        aliases = cls._aliases()
+        key = name.lower().replace("-", "").replace("_", "")
+        if name in aliases:
+            return aliases[name]
+        if key in aliases:
+            return aliases[key]
+
+        candidates = cls._canonical_names()
+        suggestions = difflib.get_close_matches(name, candidates, n=3, cutoff=0.45)
+        suggestion_text = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
+        raise ValueError(
+            f"Unknown model '{name}'. Available: {', '.join(candidates)}.{suggestion_text}"
+        )
+
+    @staticmethod
+    def list() -> List[str]:
+        """Возвращает список доступных для создания моделей (названия методов)"""
+        return Models._canonical_names()
 
     # === Local Models ===
 
     @staticmethod
-    def GigaAM_v3(model_name: str = "e2e_rnnt", device: str = "cuda") -> BaseASRModel:
+    def GigaAM_v3(model_name: str = "e2e_rnnt", device: str = "auto") -> BaseASRModel:
         """
         SberDevices GigaAM v3 (CTC/RNNT).
         Options: 'e2e_rnnt' (default), 'e2e_ctc', 'rnnt', 'ctc', 'turbo'
@@ -33,7 +74,7 @@ class Models:
         return GigaAMv3(model_name=model_name, device=device)
 
     @staticmethod
-    def GigaAM_v2(model_name: str = "v2_ctc", device: str = "cuda") -> BaseASRModel:
+    def GigaAM_v2(model_name: str = "v2_ctc", device: str = "auto") -> BaseASRModel:
         """
         SberDevices GigaAM v2.
         Options: 'v2_ctc', 'v2_rnnt'
@@ -42,12 +83,16 @@ class Models:
         return GigaAMv2(model_name=model_name, device=device)
 
     @staticmethod
-    def Whisper(model_name: str = "bond005/whisper-large-v3-ru-podlodka", device: str = "cuda") -> BaseASRModel:
+    def Whisper(
+        model_name: str = "bond005/whisper-large-v3-ru-podlodka",
+        device: str = "auto",
+        batch_size: int = 16,
+    ) -> BaseASRModel:
         """
         OpenAI Whisper (HuggingFace implementation).
         """
         from .local.whisper_model import WhisperModel
-        return WhisperModel(model_name=model_name, device=device)
+        return WhisperModel(model_name=model_name, device=device, batch_size=batch_size)
 
     @staticmethod
     def Vosk(model_path: str = "models/vosk-model-ru-0.42") -> BaseASRModel:
@@ -66,9 +111,14 @@ class Models:
         return CanaryModel(model_name=model_name, device=device)
     
     @staticmethod
-    def Tone(model_name: str = "T-one/russiantone-large", device: str = "cuda") -> BaseASRModel:
+    def Tone(model_name: Optional[str] = None, device: str = "auto") -> BaseASRModel:
         """
         T-one RussianTone.
+
+        model_name may be:
+        - None: load the default Hugging Face weights
+        - a local directory: load a local exported T-one pipeline
+        - a Hugging Face repo id, if the installed tone package supports it
         """
         from .local.tone_model import ToneModel
         return ToneModel(model_name=model_name, device=device)
@@ -87,6 +137,5 @@ class Models:
     @staticmethod
     def create(name: str, **kwargs) -> BaseASRModel:
         """Универсальный метод создания по строковому имени"""
-        if hasattr(Models, name):
-            return getattr(Models, name)(**kwargs)
-        raise ValueError(f"Unknown model: {name}. Available: {Models.list()}")
+        canonical = Models._resolve_name(name)
+        return getattr(Models, canonical)(**kwargs)

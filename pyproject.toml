@@ -4,19 +4,18 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plantain2asr"
-version = "0.1.5"
+version = "1.0.0"
 description = "A benchmarking and analysis framework for Russian ASR models"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.9"
 
 keywords = ["asr", "speech-recognition", "benchmarking", "nlp", "russian", "wer"]
 
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -35,29 +34,57 @@ dependencies = [
 
 # pip install plantain2asr[tone]
 tone = [
-    "tone @ git+https://github.com/voicekit-team/T-one.git",
+    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
+    "miniaudio>=1.2",
+    "onnxruntime>=1.16",
+]
+
+# pip install plantain2asr[tone-cpu]
+tone-cpu = [
+    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
+    "miniaudio>=1.2",
+    "onnxruntime>=1.16",
+]
+
+# pip install plantain2asr[tone-gpu]
+tone-gpu = [
+    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
     "miniaudio>=1.2",
     "onnxruntime-gpu>=1.16",
+]
+
+# pip install plantain2asr[gigaam-v2]
+gigaam-v2 = [
+    "gigaam>=0.1.0",
+]
+
+# pip install plantain2asr[gigaam-v3]
+gigaam-v3 = [
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+    "transformers>=4.40,<5",
+    "accelerate>=0.27",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "sentencepiece>=0.1.99",
 ]
 
 # pip install plantain2asr[gigaam]
 gigaam = [
     "gigaam>=0.1.0",
-    "torch>=2.0",
-    "torchaudio>=2.0",
-    "transformers>=4.40",
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+    "transformers>=4.40,<5",
     "accelerate>=0.27",
-    "librosa>=0.10",
     "hydra-core>=1.3",
     "omegaconf>=2.3",
     "sentencepiece>=0.1.99",
-    "pyannote.audio>=3.1",
 ]
 
 # pip install plantain2asr[whisper]
 whisper = [
-    "torch>=2.0",
-    "transformers>=4.40",
+    "torch>=2.5,<2.6",
+    "transformers>=4.40,<5",
     "accelerate>=0.27",
     "librosa>=0.10",
 ]
@@ -89,22 +116,120 @@ analysis = [
 
 # pip install plantain2asr[train]
 train = [
-    "torch>=2.0",
-    "transformers>=4.40",
+    "torch>=2.5,<2.6",
+    "transformers>=4.40,<5",
     "accelerate>=0.27",
     "datasets>=2.14",
     "wandb>=0.16",
 ]
 
+# Recommended single-environment installs for running multiple ASR models
+asr-cpu = [
+    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
+    "miniaudio>=1.2",
+    "onnxruntime>=1.16",
+    "gigaam>=0.1.0",
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+    "transformers>=4.40,<5",
+    "accelerate>=0.27",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "sentencepiece>=0.1.99",
+    "librosa>=0.10",
+    "vosk>=0.3.45",
+]
+
+asr-gpu = [
+    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
+    "miniaudio>=1.2",
+    "onnxruntime-gpu>=1.16",
+    "gigaam>=0.1.0",
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+    "transformers>=4.40,<5",
+    "accelerate>=0.27",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "sentencepiece>=0.1.99",
+    "librosa>=0.10",
+    "vosk>=0.3.45",
+]
+
 # pip install plantain2asr[all]
 all = [
-    "plantain2asr[gigaam,whisper,vosk,analysis,train]",
+    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
+    "miniaudio>=1.2",
+    "onnxruntime>=1.16",
+    "gigaam>=0.1.0",
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+    "transformers>=4.40,<5",
+    "accelerate>=0.27",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "sentencepiece>=0.1.99",
+    "librosa>=0.10",
+    "vosk>=0.3.45",
+    "pandas>=1.5",
+    "numpy>=1.23",
+    "matplotlib>=3.6",
+    "seaborn>=0.12",
+    "scikit-learn>=1.2",
+    "pymorphy3>=1.0",
+    "gensim>=4.3",
+    "bert-score>=0.3.13",
+    "torchmetrics>=1.0",
+    "num2words>=0.5.13",
+    "datasets>=2.14",
+    "wandb>=0.16",
+]
+
+# pip install plantain2asr[all-gpu]
+all-gpu = [
+    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
+    "miniaudio>=1.2",
+    "onnxruntime-gpu>=1.16",
+    "gigaam>=0.1.0",
+    "torch>=2.5,<2.6",
+    "torchaudio>=2.5,<2.6",
+    "transformers>=4.40,<5",
+    "accelerate>=0.27",
+    "hydra-core>=1.3",
+    "omegaconf>=2.3",
+    "sentencepiece>=0.1.99",
+    "librosa>=0.10",
+    "vosk>=0.3.45",
+    "pandas>=1.5",
+    "numpy>=1.23",
+    "matplotlib>=3.6",
+    "seaborn>=0.12",
+    "scikit-learn>=1.2",
+    "pymorphy3>=1.0",
+    "gensim>=4.3",
+    "bert-score>=0.3.13",
+    "torchmetrics>=1.0",
+    "num2words>=0.5.13",
+    "datasets>=2.14",
+    "wandb>=0.16",
 ]
 
 [project.urls]
 Homepage = "https://github.com/akatsnelson/plantain2asr"
 Documentation = "https://akatsnelson.github.io/plantain2asr"
 Issues = "https://github.com/akatsnelson/plantain2asr/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "core: lightweight package smoke tests",
+    "tone: T-One backend tests",
+    "gigaam: GigaAM backend tests",
+    "whisper: Whisper backend tests",
+    "vosk: Vosk backend tests",
+    "train: train-module smoke tests",
+    "integration: multi-model pipeline tests",
+]
 
 # Package discovery is handled by setup.py (needed due to non-standard layout
 # where the git repo root itself is the plantain2asr package directory)

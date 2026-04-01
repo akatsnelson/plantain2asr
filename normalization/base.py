@@ -20,9 +20,12 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Tuple
 
 from ..core.processor import Processor
+from ..utils.logging import get_logger
 
 if TYPE_CHECKING:
     from ..dataloaders.base import BaseASRDataset
+
+logger = get_logger(__name__)
 
 
 class BaseNormalizer(Processor):
@@ -75,7 +78,7 @@ class BaseNormalizer(Processor):
                 # Копируем его отдельно, чтобы расчёт метрик на norm_ds
                 # не мутировал оригинальный dataset.
                 nr = dict(res)
-                if "metrics" in nr:
+                if "metrics" in nr and nr["metrics"] is not None:
                     nr["metrics"] = dict(nr["metrics"])   # независимая копия
                 if "hypothesis" in nr:
                     nr["hypothesis"] = self.normalize_hyp(nr["hypothesis"] or "")
@@ -83,5 +86,5 @@ class BaseNormalizer(Processor):
             new_ds._samples.append(ns)
 
         new_ds._id_map = {s.id: s for s in new_ds._samples}
-        print(f"✅ Normalized {len(new_ds)} samples ({type(self).__name__})")
+        logger.info("Normalized %s samples with %s", len(new_ds), type(self).__name__)
         return new_ds

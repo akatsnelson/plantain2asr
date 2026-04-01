@@ -11,11 +11,16 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
+from ..utils.logging import get_logger
+from .template import build_html
 
 if TYPE_CHECKING:
     from ..dataloaders.base import BaseASRDataset
     from .sections.base import BaseSection
+
+logger = get_logger(__name__)
 
 
 class ReportBuilder:
@@ -54,7 +59,7 @@ class ReportBuilder:
 
         result = {}
         for section in self.sections:
-            print(f"  ⠿ [{section.icon}] Building {section.title}…", flush=True)
+            logger.info("Building report section [%s] %s", section.icon, section.title)
             try:
                 result[section.name] = section.compute(self.dataset)
             except Exception as e:
@@ -74,9 +79,21 @@ class ReportBuilder:
             path = os.path.join(output_dir, f"{name}.json")
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(section_data, f, ensure_ascii=False, indent=2)
-            print(f"  → Saved {path}")
+            logger.info("Saved report section to %s", path)
+
+    def save_static_html(self, output_path: str) -> str:
+        """
+        Save a self-contained static HTML report with precomputed section data.
+        """
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        html = build_html(self.sections, initial_data=self.build())
+        path.write_text(html, encoding="utf-8")
+        logger.info("Saved static report HTML to %s", path)
+        return str(path)
 
 
 def _default_sections() -> List['BaseSection']:
-    from .sections import MetricsSection, ErrorFrequencySection, DiffSection
-    return [MetricsSection(), ErrorFrequencySection(), DiffSection()]
+    from .sections import default_sections
+
+    return default_sections()

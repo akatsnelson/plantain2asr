@@ -1,84 +1,80 @@
 # Reporting
 
-Interactive browser report served locally. Opens at `http://localhost:8765`.
+Reporting is available in two forms:
 
-## ReportServer
+- live local browser report via `ReportServer`
+- shareable static HTML export via `ReportBuilder.save_static_html()`
+
+## `ReportServer`
 
 ```python
 from plantain2asr import ReportServer
 
 ReportServer(dataset, audio_dir="data/golos").serve()
-# or with custom port and sections
 ReportServer(dataset, audio_dir="data/golos", port=9000, sections=[MySection()]).serve()
 ```
 
-**Constructor:**
-
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `dataset` | `BaseASRDataset` | required | Normalized dataset with computed metrics |
-| `audio_dir` | `str` | `""` | Root directory for audio file serving |
+| `dataset` | `BaseASRDataset` | required | Usually a normalized dataset with metrics |
+| `audio_dir` | `str` | `""` | Root for serving audio files |
 | `port` | `int` | `8765` | HTTP port |
-| `sections` | `list[BaseSection]` | `None` | Additional sections to append after built-in tabs |
+| `sections` | `list[BaseSection]` | `None` | Extra tabs appended after defaults |
 
-Built-in tabs: **Metrics**, **Error Frequency**, **Diff**.
+Default tabs:
 
----
+- `Metrics`
+- `Error Frequency`
+- `Diff`
 
-## ReportBuilder
-
-Collects and structures data from all sections. Used internally by `ReportServer`.
+## `ReportBuilder`
 
 ```python
 from plantain2asr.reporting.builder import ReportBuilder
 
-builder = ReportBuilder(dataset, sections=[...])
-data = builder.build()   # dict keyed by section name
+builder = ReportBuilder(dataset)
+data = builder.build()
+builder.save_static_html("artifacts/report.html")
 ```
 
----
+Use `save_static_html()` when you need a report that can be opened without running a local server.
 
-## BaseSection
+This is also what `Experiment.save_report_html()` delegates to.
 
-Abstract base class for report tabs.
+## `BaseSection`
 
 ```python
 from plantain2asr import BaseSection
 ```
 
-**Interface:**
-
 ```python
 class BaseSection(ABC):
     @property
-    def name(self) -> str: ...     # unique id, e.g. "length"
+    def name(self) -> str: ...
     @property
-    def title(self) -> str: ...    # tab label
+    def title(self) -> str: ...
     @property
-    def icon(self) -> str: ...     # emoji icon
+    def icon(self) -> str: ...
 
-    def compute(self, dataset) -> dict: ...    # called once at startup → JSON
-    def js_function(self) -> str: ...         # JS string defining render_{name}()
+    def compute(self, dataset) -> dict: ...
+    def js_function(self) -> str: ...
 
-    def panel_html(self) -> str: ...   # optional: inner HTML (default: spinner)
-    def css(self) -> str: ...          # optional: section CSS
+    def panel_html(self) -> str: ...
+    def css(self) -> str: ...
 ```
 
 See [Custom Report Section](../extending/custom_section.md) for a full example.
 
----
-
 ## Built-in sections
 
-### MetricsSection
+### `MetricsSection`
 
-Renders a sortable metrics table with model filter.
+Sortable metrics table with model-aware filtering.
 
-### ErrorFrequencySection
+### `ErrorFrequencySection`
 
-Shows substitution/deletion/insertion frequency ranked by count.
-Clicking a word opens sample-level examples with full word diff and audio playback.
+Top substitutions, insertions, and deletions with drill-down examples and audio playback.
 
-### DiffSection
+### `DiffSection`
 
-Word-level diff view between reference and hypothesis with audio playback.
+Word-level alignment between reference and hypothesis, with audio access in both live and static modes.

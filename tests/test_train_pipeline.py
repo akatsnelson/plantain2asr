@@ -5,8 +5,9 @@ import os
 import sys
 import types
 
-import numpy as np
 import pytest
+
+np = pytest.importorskip("numpy")
 
 from plantain2asr.dataloaders.base import BaseASRDataset
 from plantain2asr.dataloaders.types import AudioSample

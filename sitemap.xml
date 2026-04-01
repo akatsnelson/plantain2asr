@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/constructor/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/constructor/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/constructor/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/quickstart/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/quickstart/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/quickstart/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/api/analysis/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/analysis/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/analysis/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/api/dataloaders/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/dataloaders/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/dataloaders/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/api/metrics/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/metrics/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/metrics/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/api/models/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/models/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/models/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/api/normalization/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/normalization/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/normalization/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/api/reporting/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/reporting/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/reporting/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/extending/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/extending/custom_metric/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/custom_metric/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/custom_metric/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/extending/custom_model/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/custom_model/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/custom_model/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/extending/custom_normalizer/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/custom_normalizer/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/custom_normalizer/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/extending/custom_section/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/custom_section/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/custom_section/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/constructor/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/constructor/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/constructor/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/quickstart/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/quickstart/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/quickstart/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/api/analysis/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/analysis/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/analysis/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/api/dataloaders/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/dataloaders/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/dataloaders/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/api/metrics/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/metrics/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/metrics/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/api/models/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/models/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/models/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/api/normalization/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/normalization/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/normalization/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/api/reporting/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/api/reporting/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/api/reporting/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/extending/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/extending/custom_metric/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/custom_metric/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/custom_metric/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/extending/custom_model/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/custom_model/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/custom_model/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/extending/custom_normalizer/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/custom_normalizer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/custom_normalizer/"/>
+    </url>
+    <url>
+        <loc>https://akatsnelson.github.io/plantain2asr/ru/extending/custom_section/</loc>
+        <lastmod>2026-04-01</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://akatsnelson.github.io/plantain2asr/ru/extending/custom_section/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://akatsnelson.github.io/plantain2asr/extending/custom_section/"/>
+    </url>
+</urlset>

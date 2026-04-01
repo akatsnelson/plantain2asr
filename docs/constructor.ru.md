@@ -232,14 +232,37 @@ norm = ds >> SimpleNormalizer()
 
 ---
 
-## Шаг 5. Собираем всё вместе
+## Шаг 5. Собираем цепочку `>>`
 
-Теперь, когда вы выбрали данные, модели, нормализатор и метрики, есть два способа запустить
-эксперимент.
+Теперь, когда вы выбрали данные, модели, нормализатор и метрики, соберите их
+в пайплайн через оператор `>>`:
 
-### Способ 1: `Experiment` (рекомендуемый)
+```python
+from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics
 
-Готовый оркестратор, который запускает всю цепочку за вас:
+ds = GolosDataset("data/golos")
+
+# шаг 1: прогнать модели
+ds >> Models.GigaAM_v3()
+ds >> Models.Whisper()
+
+# шаг 2: нормализовать
+norm = ds >> SimpleNormalizer()
+
+# шаг 3: посчитать метрики
+norm >> Metrics.composite()
+
+# шаг 4: посмотреть результаты
+df = norm.to_pandas()
+print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
+```
+
+Каждый `>>` создаёт новый слой результатов поверх датасета.
+Можно ветвить (`.filter()`), брать подвыборки (`.take(n)`) и рекомбинировать.
+
+### Обёртка `Experiment`
+
+Если не нужен ручной контроль, `Experiment` оборачивает те же `>>` шаги:
 
 ```python
 from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
@@ -250,37 +273,15 @@ experiment = Experiment(
     normalizer=SimpleNormalizer(),
 )
 
-comparison = experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
-print(comparison["leaderboard"])
+experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
 ```
-
-Что ещё умеет `Experiment`:
 
 | Метод | Что делает |
 |---|---|
 | `compare_on_corpus()` | Сравнение моделей с таблицей метрик |
-| `leaderboard()` | Рейтинг моделей по выбранной метрике |
 | `prepare_thesis_tables()` | CSV-таблицы для диссертации |
 | `export_appendix_bundle()` | Полный пакет: таблицы + отчёт + бенчмарк |
 | `benchmark_models()` | Замеры latency, throughput, RTF |
-| `save_report_html()` | Статический HTML-отчёт |
-
-### Способ 2: `>>` pipeline (для полного контроля)
-
-```python
-from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics
-
-ds = GolosDataset("data/golos")
-
-ds >> Models.GigaAM_v3()
-ds >> Models.Whisper()
-
-norm = ds >> SimpleNormalizer()
-norm >> Metrics.composite()
-
-df = norm.to_pandas()
-print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
-```
 
 ---
 
@@ -371,10 +372,10 @@ print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
 <script>
 (function(){
 const PRESETS=[
-{id:"compare",title:"Сравнить модели",hint:"summary + leaderboard",route:"Experiment.compare_on_corpus()"},
-{id:"thesis",title:"Таблицы для диссертации",hint:"CSV для results / leaderboard / errors",route:"Experiment.prepare_thesis_tables()"},
-{id:"bundle",title:"Полный bundle",hint:"таблицы + отчёт + бенчмарк",route:"Experiment.export_appendix_bundle()"},
-{id:"pipeline",title:"Ручной pipeline",hint:"полный контроль через >>",route:"dataset >> model >> norm >> metric"}
+{id:"pipeline",title:"Пайплайн >>",hint:"dataset >> model >> norm >> metric",route:"dataset >> model >> norm >> metric"},
+{id:"compare",title:"Experiment: сравнить",hint:"обёртка для summary + leaderboard",route:"Experiment.compare_on_corpus()"},
+{id:"thesis",title:"Experiment: диссертация",hint:"CSV для results / leaderboard / errors",route:"Experiment.prepare_thesis_tables()"},
+{id:"bundle",title:"Experiment: bundle",hint:"таблицы + отчёт + бенчмарк",route:"Experiment.export_appendix_bundle()"}
 ];
 const DATASETS=[
 {id:"golos",label:"GolosDataset",code:'GolosDataset("data/golos")',dir:'"data/golos"'},
@@ -404,7 +405,7 @@ const METRICS=[
 {id:"accuracy",label:"Accuracy",code:"Metrics.Accuracy()"}
 ];
 
-const S={preset:"compare",dataset:"golos",models:new Set(["gigaam_v3","whisper"]),norm:"simple",metrics:new Set(["composite"]),art:{"report":false,"browser":false,"bench":false,"pandas":false}};
+const S={preset:"pipeline",dataset:"golos",models:new Set(["gigaam_v3","whisper"]),norm:"simple",metrics:new Set(["composite"]),art:{"report":false,"browser":false,"bench":false,"pandas":true}};
 
 function el(id){return document.getElementById(id)}
 

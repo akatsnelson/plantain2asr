@@ -1,104 +1,16 @@
 # Quick Start
 
-This page shows the recommended path for a new user:
+This page walks through a complete `>>` pipeline from loading data to viewing results.
 
-1. choose a dataset,
-2. run a few models,
-3. normalize and score them,
-4. export shareable artifacts.
-
-If you want a visual builder first, open the [Interactive Constructor](constructor.md).
-
-## Recommended install
+## Install
 
 ```bash
 pip install plantain2asr[asr-cpu]
 ```
 
-For GPU-heavy local workflows:
+For GPU workflows: `pip install plantain2asr[asr-gpu]`
 
-```bash
-pip install plantain2asr[asr-gpu]
-```
-
-Add extras only when needed:
-
-```bash
-pip install plantain2asr[analysis]
-```
-
-## Recommended workflow: `Experiment`
-
-```python
-from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
-
-dataset = GolosDataset("data/golos")
-
-experiment = Experiment(
-    dataset=dataset,
-    models=[
-        Models.GigaAM_v3(),
-        Models.Whisper(),
-    ],
-    normalizer=SimpleNormalizer(),
-)
-```
-
-### Step 1: compare models on one corpus
-
-```python
-comparison = experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
-print(comparison["metrics_by_model"])
-```
-
-What you get:
-
-- model inference with caching
-- normalized evaluation view
-- aggregate metric table by model
-
-### Step 2: inspect the ranking
-
-```python
-leaderboard = experiment.leaderboard(metric="WER")
-print(leaderboard)
-```
-
-### Step 3: export artifacts
-
-```python
-experiment.save_leaderboard_csv("artifacts/leaderboard.csv", metric="WER")
-experiment.save_report_html("artifacts/report.html")
-experiment.export_error_cases("artifacts/error_cases.csv", metric="WER")
-```
-
-### Step 4: generate thesis-ready outputs
-
-```python
-tables = experiment.prepare_thesis_tables(
-    metrics=["WER", "CER", "Accuracy"],
-    output_dir="artifacts/thesis",
-)
-
-bundle = experiment.export_appendix_bundle(
-    output_dir="artifacts/appendix",
-    include_report=True,
-    include_benchmark=True,
-)
-```
-
-Use these presets when they match your task:
-
-- `compare_on_corpus()` for general comparison
-- `prepare_thesis_tables()` for clean aggregate tables
-- `export_appendix_bundle()` for a full deliverable package
-- `benchmark_models()` for latency, throughput, and RTF
-
-## Advanced workflow: direct pipeline
-
-Use the pipeline API when you need explicit control over each stage.
-
-### Load a dataset
+## 1. Load a dataset
 
 ```python
 from plantain2asr import GolosDataset
@@ -107,7 +19,7 @@ ds = GolosDataset("data/golos")
 crowd = ds.filter(lambda s: s.meta["subset"] == "crowd")
 ```
 
-### Run inference
+## 2. Run models via `>>`
 
 ```python
 from plantain2asr import Models
@@ -116,18 +28,29 @@ crowd >> Models.GigaAM_v3()
 crowd >> Models.Whisper()
 ```
 
-Results are cached on disk, so reruns skip already processed samples.
+Results are cached on disk -- reruns skip already processed samples.
 
-### Normalize and score
+## 3. Normalize via `>>`
 
 ```python
-from plantain2asr import SimpleNormalizer, Metrics
+from plantain2asr import SimpleNormalizer
 
 norm = crowd >> SimpleNormalizer()
+```
+
+The original dataset is untouched; `norm` is a new view with normalized texts.
+
+## 4. Compute metrics via `>>`
+
+```python
+from plantain2asr import Metrics
+
 norm >> Metrics.composite()
 ```
 
-### Explore results
+This computes WER, CER, MER, WIL, WIP, Accuracy, IDR, and LengthRatio in a single pass.
+
+## 5. Explore results
 
 === "Pandas"
     ```python
@@ -144,13 +67,36 @@ norm >> Metrics.composite()
 === "Static HTML report"
     ```python
     from plantain2asr.reporting.builder import ReportBuilder
-
     ReportBuilder(norm).save_static_html("artifacts/report.html")
     ```
 
+=== "CSV export"
+    ```python
+    norm.save_csv("artifacts/results.csv")
+    ```
+
+## Full pipeline in one block
+
+```python
+from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics, ReportServer
+
+ds = GolosDataset("data/golos")
+
+ds >> Models.GigaAM_v3()
+ds >> Models.Whisper()
+
+norm = ds >> SimpleNormalizer()
+norm >> Metrics.composite()
+
+df = norm.to_pandas()
+print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
+
+ReportServer(norm, audio_dir="data/golos").serve()
+```
+
 ## Loading precomputed results
 
-If inference was run on another machine, you can load JSONL results and continue evaluation locally:
+If inference was run on another machine, load JSONL results and continue evaluation locally:
 
 ```python
 ds = GolosDataset("data/golos")
@@ -164,3 +110,32 @@ One line per sample:
 ```
 
 Samples are matched by the basename of `audio_path`, which makes cross-machine reuse practical.
+
+## `Experiment` convenience wrapper
+
+If you want ready-made research scenarios without building the `>>` chain manually,
+`Experiment` wraps the same pipeline steps:
+
+```python
+from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
+
+experiment = Experiment(
+    dataset=GolosDataset("data/golos"),
+    models=[Models.GigaAM_v3(), Models.Whisper()],
+    normalizer=SimpleNormalizer(),
+)
+
+experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
+```
+
+| Method | What it does |
+|---|---|
+| `compare_on_corpus()` | Run models, normalize, score, return comparison table |
+| `leaderboard()` | Rank models by a single metric |
+| `prepare_thesis_tables()` | Export CSV tables for thesis/paper |
+| `export_appendix_bundle()` | Full package: tables + report + benchmark |
+| `benchmark_models()` | Latency, throughput, RTF measurements |
+| `save_report_html()` | Static HTML report |
+
+Under the hood, `Experiment` executes the same `>>` steps.
+Use it when you want a one-liner; use the pipeline when you want control.

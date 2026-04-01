@@ -106,6 +106,6 @@ def test_release_metadata_is_no_longer_alpha():
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     project = pyproject["project"]
 
-    assert project["version"] == "1.0.0"
+    assert project["version"] == "1.0.1"
     assert "Development Status :: 5 - Production/Stable" in project["classifiers"]
     assert all("Alpha" not in classifier for classifier in project["classifiers"])

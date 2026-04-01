@@ -2,39 +2,38 @@
 
 **Benchmarking and analysis framework for Russian ASR models.**
 
-The documentation is organized around one simple principle: start with the easiest entry point, then drop to lower-level APIs only when you actually need more control.
+plantain2asr is built around the `>>` pipeline operator: you load a dataset, push it through models,
+normalizers, and metrics -- each step produces a new view, nothing is mutated in place.
 
-## Recommended Entry Path
+## The `>>` interface
 
-1. Open the [Interactive Constructor](constructor.md) to assemble a pipeline visually.
-2. Use `Experiment` for standard research workflows.
-3. Use the `>>` pipeline directly when you need full modular control.
+```python
+from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics
+
+ds = GolosDataset("data/golos")
+
+ds >> Models.GigaAM_v3()      # run inference, results are cached
+ds >> Models.Whisper()         # run another model on the same data
+
+norm = ds >> SimpleNormalizer()  # normalize references and hypotheses
+norm >> Metrics.composite()      # compute WER, CER, MER, Accuracy, ...
+
+df = norm.to_pandas()
+print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
+```
+
+Each `>>` step returns the dataset with new results layered on top.
+You can branch, filter, and recombine at any point.
 
 ## What plantain2asr gives you
 
+- The `>>` pipeline: dataset >> model >> normalizer >> metric >> report
 - Local and cloud ASR backends under one interface
-- Automatic device choice where supported
-- Dataset views instead of in-place mutation
+- Automatic device choice (CUDA / MPS / CPU) where supported
+- Immutable dataset views instead of in-place mutation
 - Built-in normalization, metrics, reports, analysis, and benchmarks
-- High-level export scenarios for thesis and appendix artifacts
+- `Experiment` convenience wrapper for common research scenarios
 - Modular architecture for adding your own models, metrics, and report sections
-
-## Fastest Useful Example
-
-```python
-from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
-
-dataset = GolosDataset("data/golos")
-
-experiment = Experiment(
-    dataset=dataset,
-    models=[Models.GigaAM_v3(), Models.Whisper()],
-    normalizer=SimpleNormalizer(),
-)
-
-experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
-experiment.save_report_html("artifacts/report.html")
-```
 
 ## Install
 
@@ -79,14 +78,15 @@ Device resolution prefers CUDA, then MPS, then CPU where the backend supports it
 
 ```mermaid
 graph LR
-    A[Dataset] --> B[Models]
-    B --> C[Normalizer]
-    C --> D[Metrics]
-    D --> E[Reports and Analysis]
-    E --> F[Exports and Thesis Artifacts]
+    A["ds = GolosDataset(...)"] -->|>>| B["Models.GigaAM_v3()"]
+    A -->|>>| B2["Models.Whisper()"]
+    B --> C[">> SimpleNormalizer()"]
+    B2 --> C
+    C -->|>>| D["Metrics.composite()"]
+    D --> E["to_pandas() / ReportServer / CSV"]
 ```
 
-Each step is still composable as a pipeline. `Experiment` simply orchestrates the same building blocks for common research scenarios.
+Every block is a `>>` step. Compose them however you need.
 
 ## Supported model families
 
@@ -102,7 +102,7 @@ Each step is still composable as a pipeline. `Experiment` simply orchestrates th
 
 ## If you are new
 
-- Go to [Interactive Constructor](constructor.md) if you want to assemble a chain and immediately see code.
-- Go to [Quick Start](quickstart.md) if you want a canonical runnable workflow.
+- Go to [Interactive Constructor](constructor.md) to assemble a `>>` chain and see code.
+- Go to [Quick Start](quickstart.md) for a full pipeline walkthrough.
 - Go to [API Reference](api/dataloaders.md) if you already know what building block you need.
 - Go to [Extending](extending/index.md) if you want to add your own components.

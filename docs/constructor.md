@@ -232,14 +232,37 @@ norm = ds >> SimpleNormalizer()
 
 ---
 
-## Step 5. Putting it all together
+## Step 5. Assemble the `>>` chain
 
-Now that you have chosen data, models, normalizer, and metrics, there are two ways
-to run the experiment.
+Now that you have chosen data, models, normalizer, and metrics, assemble them
+into a pipeline using the `>>` operator:
 
-### Option 1: `Experiment` (recommended)
+```python
+from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics
 
-A ready-made orchestrator that runs the full chain for you:
+ds = GolosDataset("data/golos")
+
+# step 1: run models
+ds >> Models.GigaAM_v3()
+ds >> Models.Whisper()
+
+# step 2: normalize
+norm = ds >> SimpleNormalizer()
+
+# step 3: compute metrics
+norm >> Metrics.composite()
+
+# step 4: view results
+df = norm.to_pandas()
+print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
+```
+
+Each `>>` creates a new results layer on top of the dataset.
+You can branch (`.filter()`), subsample (`.take(n)`), and recombine at any point.
+
+### `Experiment` convenience wrapper
+
+If you don't need manual control, `Experiment` wraps the same `>>` steps:
 
 ```python
 from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
@@ -250,37 +273,15 @@ experiment = Experiment(
     normalizer=SimpleNormalizer(),
 )
 
-comparison = experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
-print(comparison["leaderboard"])
+experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
 ```
-
-What else `Experiment` can do:
 
 | Method | What it does |
 |---|---|
 | `compare_on_corpus()` | Model comparison with metric table |
-| `leaderboard()` | Model ranking by a chosen metric |
 | `prepare_thesis_tables()` | CSV tables for thesis/paper |
 | `export_appendix_bundle()` | Full package: tables + report + benchmark |
 | `benchmark_models()` | Latency, throughput, RTF measurements |
-| `save_report_html()` | Static HTML report |
-
-### Option 2: `>>` pipeline (full control)
-
-```python
-from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics
-
-ds = GolosDataset("data/golos")
-
-ds >> Models.GigaAM_v3()
-ds >> Models.Whisper()
-
-norm = ds >> SimpleNormalizer()
-norm >> Metrics.composite()
-
-df = norm.to_pandas()
-print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
-```
 
 ---
 
@@ -371,10 +372,10 @@ the install command, and a list of output artifacts.
 <script>
 (function(){
 const PRESETS=[
-{id:"compare",title:"Compare models",hint:"summary + leaderboard",route:"Experiment.compare_on_corpus()"},
-{id:"thesis",title:"Thesis tables",hint:"CSV for results / leaderboard / errors",route:"Experiment.prepare_thesis_tables()"},
-{id:"bundle",title:"Full bundle",hint:"tables + report + benchmark",route:"Experiment.export_appendix_bundle()"},
-{id:"pipeline",title:"Manual pipeline",hint:"full control via >>",route:"dataset >> model >> norm >> metric"}
+{id:"pipeline",title:">> Pipeline",hint:"dataset >> model >> norm >> metric",route:"dataset >> model >> norm >> metric"},
+{id:"compare",title:"Experiment: compare",hint:"wrapper for summary + leaderboard",route:"Experiment.compare_on_corpus()"},
+{id:"thesis",title:"Experiment: thesis",hint:"CSV for results / leaderboard / errors",route:"Experiment.prepare_thesis_tables()"},
+{id:"bundle",title:"Experiment: bundle",hint:"tables + report + benchmark",route:"Experiment.export_appendix_bundle()"}
 ];
 const DATASETS=[
 {id:"golos",label:"GolosDataset",code:'GolosDataset("data/golos")',dir:'"data/golos"'},
@@ -404,7 +405,7 @@ const METRICS=[
 {id:"accuracy",label:"Accuracy",code:"Metrics.Accuracy()"}
 ];
 
-const S={preset:"compare",dataset:"golos",models:new Set(["gigaam_v3","whisper"]),norm:"simple",metrics:new Set(["composite"]),art:{"report":false,"browser":false,"bench":false,"pandas":false}};
+const S={preset:"pipeline",dataset:"golos",models:new Set(["gigaam_v3","whisper"]),norm:"simple",metrics:new Set(["composite"]),art:{"report":false,"browser":false,"bench":false,"pandas":true}};
 
 function el(id){return document.getElementById(id)}
 

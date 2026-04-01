@@ -1,104 +1,16 @@
 # Быстрый старт
 
-Эта страница показывает рекомендуемый маршрут для нового пользователя:
+Эта страница проводит через полный пайплайн `>>` -- от загрузки данных до просмотра результатов.
 
-1. выбрать датасет,
-2. прогнать несколько моделей,
-3. нормализовать и посчитать метрики,
-4. выгрузить готовые артефакты.
-
-Если сначала нужен визуальный сборщик, откройте [Интерактивный конструктор](constructor.md).
-
-## Рекомендуемая установка
+## Установка
 
 ```bash
 pip install plantain2asr[asr-cpu]
 ```
 
-Для GPU-ориентированного локального сценария:
+Для GPU: `pip install plantain2asr[asr-gpu]`
 
-```bash
-pip install plantain2asr[asr-gpu]
-```
-
-Дополнительный исследовательский слой:
-
-```bash
-pip install plantain2asr[analysis]
-```
-
-## Рекомендуемый workflow: `Experiment`
-
-```python
-from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
-
-dataset = GolosDataset("data/golos")
-
-experiment = Experiment(
-    dataset=dataset,
-    models=[
-        Models.GigaAM_v3(),
-        Models.Whisper(),
-    ],
-    normalizer=SimpleNormalizer(),
-)
-```
-
-### Шаг 1: сравнить модели на одном корпусе
-
-```python
-comparison = experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
-print(comparison["metrics_by_model"])
-```
-
-Что вы получаете:
-
-- инференс моделей с кешированием
-- нормализованный evaluation-view
-- агрегированную таблицу метрик по моделям
-
-### Шаг 2: посмотреть рейтинг
-
-```python
-leaderboard = experiment.leaderboard(metric="WER")
-print(leaderboard)
-```
-
-### Шаг 3: выгрузить артефакты
-
-```python
-experiment.save_leaderboard_csv("artifacts/leaderboard.csv", metric="WER")
-experiment.save_report_html("artifacts/report.html")
-experiment.export_error_cases("artifacts/error_cases.csv", metric="WER")
-```
-
-### Шаг 4: сделать материалы для диссертации
-
-```python
-tables = experiment.prepare_thesis_tables(
-    metrics=["WER", "CER", "Accuracy"],
-    output_dir="artifacts/thesis",
-)
-
-bundle = experiment.export_appendix_bundle(
-    output_dir="artifacts/appendix",
-    include_report=True,
-    include_benchmark=True,
-)
-```
-
-Используйте эти preset-сценарии по ситуации:
-
-- `compare_on_corpus()` для обычного сравнения моделей
-- `prepare_thesis_tables()` для чистых агрегированных таблиц
-- `export_appendix_bundle()` для полного пакета артефактов
-- `benchmark_models()` для замеров latency, throughput и RTF
-
-## Продвинутый workflow: прямой pipeline
-
-Используйте pipeline API, когда нужен явный контроль над каждым шагом.
-
-### Загрузить датасет
+## 1. Загрузить датасет
 
 ```python
 from plantain2asr import GolosDataset
@@ -107,7 +19,7 @@ ds = GolosDataset("data/golos")
 crowd = ds.filter(lambda s: s.meta["subset"] == "crowd")
 ```
 
-### Запустить инференс
+## 2. Прогнать модели через `>>`
 
 ```python
 from plantain2asr import Models
@@ -116,18 +28,29 @@ crowd >> Models.GigaAM_v3()
 crowd >> Models.Whisper()
 ```
 
-Результаты кешируются на диск, поэтому повторные запуски пропускают уже обработанные семплы.
+Результаты кешируются на диск -- повторные запуски пропускают уже обработанные семплы.
 
-### Нормализовать и посчитать метрики
+## 3. Нормализовать через `>>`
 
 ```python
-from plantain2asr import SimpleNormalizer, Metrics
+from plantain2asr import SimpleNormalizer
 
 norm = crowd >> SimpleNormalizer()
+```
+
+Исходный датасет не затронут; `norm` -- новое представление с нормализованными текстами.
+
+## 4. Посчитать метрики через `>>`
+
+```python
+from plantain2asr import Metrics
+
 norm >> Metrics.composite()
 ```
 
-### Исследовать результаты
+Считает WER, CER, MER, WIL, WIP, Accuracy, IDR и LengthRatio за один проход.
+
+## 5. Исследовать результаты
 
 === "Pandas"
     ```python
@@ -144,13 +67,36 @@ norm >> Metrics.composite()
 === "Статический HTML-отчёт"
     ```python
     from plantain2asr.reporting.builder import ReportBuilder
-
     ReportBuilder(norm).save_static_html("artifacts/report.html")
     ```
 
+=== "CSV-экспорт"
+    ```python
+    norm.save_csv("artifacts/results.csv")
+    ```
+
+## Полный пайплайн одним блоком
+
+```python
+from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics, ReportServer
+
+ds = GolosDataset("data/golos")
+
+ds >> Models.GigaAM_v3()
+ds >> Models.Whisper()
+
+norm = ds >> SimpleNormalizer()
+norm >> Metrics.composite()
+
+df = norm.to_pandas()
+print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
+
+ReportServer(norm, audio_dir="data/golos").serve()
+```
+
 ## Загрузка готовых результатов
 
-Если инференс был выполнен на другой машине, можно локально загрузить JSONL и продолжить оценку:
+Если инференс был выполнен на другой машине, загрузите JSONL и продолжите оценку локально:
 
 ```python
 ds = GolosDataset("data/golos")
@@ -164,3 +110,32 @@ ds.load_model_results("GigaAM-v3-rnnt", "results/GigaAM-v3-rnnt_results.jsonl")
 ```
 
 Сопоставление идёт по basename `audio_path`, поэтому результаты удобно переносить между машинами.
+
+## Обёртка `Experiment`
+
+Если нужны готовые исследовательские сценарии без ручной сборки `>>` цепочки,
+`Experiment` оборачивает те же шаги пайплайна:
+
+```python
+from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
+
+experiment = Experiment(
+    dataset=GolosDataset("data/golos"),
+    models=[Models.GigaAM_v3(), Models.Whisper()],
+    normalizer=SimpleNormalizer(),
+)
+
+experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
+```
+
+| Метод | Что делает |
+|---|---|
+| `compare_on_corpus()` | Прогнать модели, нормализовать, оценить, вернуть сравнительную таблицу |
+| `leaderboard()` | Рейтинг моделей по одной метрике |
+| `prepare_thesis_tables()` | CSV-таблицы для диссертации |
+| `export_appendix_bundle()` | Полный пакет: таблицы + отчёт + бенчмарк |
+| `benchmark_models()` | Замеры latency, throughput, RTF |
+| `save_report_html()` | Статический HTML-отчёт |
+
+Под капотом `Experiment` выполняет те же `>>` шаги.
+Используйте его, когда нужен однострочник; используйте пайплайн, когда нужен контроль.

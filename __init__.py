@@ -1,4 +1,4 @@
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 __author__  = "Artem Katsnelson"
 
 from .utils.logging import configure_logging

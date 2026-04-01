@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "plantain2asr"
-version = "1.0.3"
+version = "1.0.4"
 description = "A benchmarking and analysis framework for Russian ASR models"
 readme = "README.md"
 license = "MIT"
@@ -32,23 +32,24 @@ dependencies = [
 
 [project.optional-dependencies]
 
-# pip install plantain2asr[tone]
+# T-One source package must be installed separately because PyPI rejects
+# published distributions that embed direct URL dependencies in Requires-Dist.
+# Install with:
+#   pip install plantain2asr[tone]
+#   pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
 tone = [
-    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
     "miniaudio>=1.2",
     "onnxruntime>=1.16",
 ]
 
 # pip install plantain2asr[tone-cpu]
 tone-cpu = [
-    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
     "miniaudio>=1.2",
     "onnxruntime>=1.16",
 ]
 
 # pip install plantain2asr[tone-gpu]
 tone-gpu = [
-    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
     "miniaudio>=1.2",
     "onnxruntime-gpu>=1.16",
 ]
@@ -125,7 +126,6 @@ train = [
 
 # Recommended single-environment installs for running multiple ASR models
 asr-cpu = [
-    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
     "miniaudio>=1.2",
     "onnxruntime>=1.16",
     "gigaam>=0.1.0",
@@ -141,7 +141,6 @@ asr-cpu = [
 ]
 
 asr-gpu = [
-    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
     "miniaudio>=1.2",
     "onnxruntime-gpu>=1.16",
     "gigaam>=0.1.0",
@@ -158,7 +157,6 @@ asr-gpu = [
 
 # pip install plantain2asr[all]
 all = [
-    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
     "miniaudio>=1.2",
     "onnxruntime>=1.16",
     "gigaam>=0.1.0",
@@ -187,7 +185,6 @@ all = [
 
 # pip install plantain2asr[all-gpu]
 all-gpu = [
-    "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz",
     "miniaudio>=1.2",
     "onnxruntime-gpu>=1.16",
     "gigaam>=0.1.0",

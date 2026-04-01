@@ -5,11 +5,12 @@ from ..base import BaseASRModel
 from ...utils.logging import get_logger
 
 _TONE_INSTALL_HINT = (
-    "Install one of the supported extras:\n"
-    "  pip install plantain2asr[tone]      # standalone CPU install\n"
-    "  pip install plantain2asr[tone-gpu]  # standalone NVIDIA GPU install\n"
+    "Install the runtime extra and then the T-One package itself:\n"
+    "  pip install plantain2asr[tone]      # standalone CPU runtime\n"
+    "  pip install plantain2asr[tone-gpu]  # standalone NVIDIA GPU runtime\n"
     "  pip install plantain2asr[asr-cpu]   # shared CPU environment\n"
-    "  pip install plantain2asr[asr-gpu]   # shared GPU environment"
+    "  pip install plantain2asr[asr-gpu]   # shared GPU environment\n"
+    '  pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"'
 )
 
 logger = get_logger(__name__)
@@ -21,6 +22,7 @@ class ToneModel(BaseASRModel):
 
     Установка:
         pip install plantain2asr[tone]
+        pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
 
     Использование:
         model = Models.Tone()

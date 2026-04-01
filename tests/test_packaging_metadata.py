@@ -41,10 +41,9 @@ def test_optional_dependency_profiles_cover_single_environment_use_case():
     all_cpu = extras["all"]
     all_gpu = extras["all-gpu"]
 
-    assert any(TONE_ARCHIVE in dep for dep in tone_cpu)
     assert any(dep.startswith("onnxruntime>=") for dep in tone_cpu)
     assert any(dep.startswith("onnxruntime-gpu>=") for dep in tone_gpu)
-    assert any(TONE_ARCHIVE in dep for dep in extras["tone"])
+    assert "miniaudio>=1.2" in extras["tone"]
 
     assert "gigaam>=0.1.0" in asr_cpu
     assert "gigaam>=0.1.0" in asr_gpu
@@ -66,11 +65,12 @@ def test_optional_dependency_profiles_cover_single_environment_use_case():
     assert any(dep.startswith("torch>=") for dep in all_gpu)
     assert any(dep.startswith("torchaudio>=") for dep in all_gpu)
     assert all(not dep.startswith("torchaudio") for dep in extras["gigaam-v2"])
-    assert any(TONE_ARCHIVE in dep for dep in asr_cpu)
-    assert any(TONE_ARCHIVE in dep for dep in asr_gpu)
-    assert any(TONE_ARCHIVE in dep for dep in all_cpu)
-    assert any(TONE_ARCHIVE in dep for dep in all_gpu)
+    assert "miniaudio>=1.2" in asr_cpu
+    assert "miniaudio>=1.2" in asr_gpu
+    assert "miniaudio>=1.2" in all_cpu
+    assert "miniaudio>=1.2" in all_gpu
     assert all("git+" not in dep for deps in extras.values() for dep in deps)
+    assert all("https://" not in dep for deps in extras.values() for dep in deps)
 
 
 @pytest.mark.core
@@ -85,7 +85,8 @@ def test_release_workflows_gate_publish_and_validate_public_profiles():
     ci_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     publish_text = (ROOT / ".github" / "workflows" / "publish.yml").read_text(encoding="utf-8")
 
-    assert 'python -m pip install ".[tone-cpu]" pytest' in ci_text
+    assert 'TONE_ARCHIVE: "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"' in ci_text
+    assert 'python -m pip install ".[tone-cpu]" pytest "${{ env.TONE_ARCHIVE }}"' in ci_text
     assert 'python -m pip install ".[gigaam]" pytest' in ci_text
     assert 'python -m pip install ".[whisper]" pytest' in ci_text
     assert 'python -m pip install ".[vosk]" pytest' in ci_text
@@ -106,6 +107,6 @@ def test_release_metadata_is_no_longer_alpha():
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     project = pyproject["project"]
 
-    assert project["version"] == "1.0.3"
+    assert project["version"] == "1.0.4"
     assert "Development Status :: 5 - Production/Stable" in project["classifiers"]
     assert all("Alpha" not in classifier for classifier in project["classifiers"])

@@ -37,6 +37,7 @@ pip install plantain2asr[whisper]
 pip install plantain2asr[vosk]
 pip install plantain2asr[canary]
 pip install plantain2asr[tone]
+pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
 
 # Research analysis tools
 pip install plantain2asr[analysis]
@@ -49,33 +50,24 @@ Device selection is automatic where supported: NVIDIA GPU first, then MPS, then 
 
 ## Recommended Quick Start
 
-For most research workflows, start with `Experiment`:
+For most research workflows, start with the `>>` pipeline:
 
 ```python
-from plantain2asr import Experiment, GolosDataset, Models, SimpleNormalizer
+from plantain2asr import GolosDataset, Models, SimpleNormalizer, Metrics
 
-dataset = GolosDataset("data/golos")
+ds = GolosDataset("data/golos")
 
-experiment = Experiment(
-    dataset=dataset,
-    models=[
-        Models.GigaAM_v3(),
-        Models.Whisper(),
-    ],
-    normalizer=SimpleNormalizer(),
-)
+ds >> Models.GigaAM_v3()
+ds >> Models.Whisper()
 
-summary = experiment.compare_on_corpus(metrics=["WER", "CER", "Accuracy"])
-leaderboard = experiment.leaderboard(metric="WER")
+norm = ds >> SimpleNormalizer()
+norm >> Metrics.composite()
 
-experiment.save_report_html("artifacts/report.html")
-experiment.save_leaderboard_csv("artifacts/leaderboard.csv", metric="WER")
-
-print(summary["metrics_by_model"])
-print(leaderboard)
+df = norm.to_pandas()
+print(df.groupby("model")[["WER", "CER", "Accuracy"]].mean().sort_values("WER"))
 ```
 
-Use preset scenarios when you need ready-made research outputs:
+If you want ready-made research scenarios on top of the same building blocks, use `Experiment`:
 
 - `Experiment.compare_on_corpus()` for straightforward model comparison
 - `Experiment.prepare_thesis_tables()` for publication-ready aggregate tables
@@ -117,7 +109,7 @@ Pipeline rules:
 | `Models.GigaAM_v2(model_name="v2_rnnt")` | `GigaAM-v2_rnnt` | `gigaam` | CUDA / MPS / CPU |
 | `Models.GigaAM_v2(model_name="v2_ctc")` | `GigaAM-v2_ctc` | `gigaam` | CUDA / MPS / CPU |
 | `Models.Whisper()` | `Whisper-whisper-large-v3-ru-podlodka` | `whisper` | CUDA / MPS / CPU |
-| `Models.Tone()` | `T-One` | `tone` | CUDA / CPU |
+| `Models.Tone()` | `T-One` | `tone` + T-One source archive | CUDA / CPU |
 | `Models.Vosk(model_path=...)` | `Vosk` | `vosk` | CPU |
 | `Models.Canary()` | `Canary-1B` | `canary` | CUDA |
 | `Models.SaluteSpeech()` | `SaluteSpeech` | none | cloud |

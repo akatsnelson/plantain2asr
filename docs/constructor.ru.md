@@ -172,7 +172,7 @@ plantain2asr поддерживает несколько семейств ASR-м
 | **GigaAM v3** | Крупная модель от Сбера, e2e-RNNT архитектура. Лучшее качество на русском. | CUDA / MPS / CPU | `gigaam` | Когда важно качество и есть GPU |
 | **GigaAM v2** | Предыдущее поколение GigaAM. | CUDA / MPS / CPU | `gigaam` | Для сравнения с v3 |
 | **Whisper** | Модель OpenAI, large-v3. Сильный мультиязычный baseline. | CUDA / MPS / CPU | `whisper` | Универсальный baseline |
-| **T-One** | Модель T-Bank на ONNX Runtime. Быстрый инференс. | CUDA / CPU | `tone` | Когда важна скорость |
+| **T-One** | Модель T-Bank на ONNX Runtime. Быстрый инференс. | CUDA / CPU | `tone` + source archive T-One | Когда важна скорость |
 | **Vosk** | Лёгкая offline-модель на Kaldi. Работает только на CPU. | CPU | `vosk` | Когда нет GPU и нужен offline |
 | **Canary** | NVIDIA NeMo Canary. Тяжёлая, требует GPU. | CUDA | `canary` | Исследовательские сравнения |
 
@@ -190,6 +190,8 @@ plantain2asr поддерживает несколько семейств ASR-м
 pip install plantain2asr[gigaam]
 pip install plantain2asr[whisper]
 pip install plantain2asr[vosk]
+pip install plantain2asr[tone]
+pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
 ```
 
 Или сразу весь CPU/GPU-стек:
@@ -434,7 +436,11 @@ function render(){
   var nm=NORMS.find(n=>n.id===S.norm);
   var mt=METRICS.filter(m=>S.metrics.has(m.id));
   var extras=[...new Set(ms.map(m=>m.extra).filter(Boolean))];
+  var needsTone=ms.some(m=>m.id==="tone");
   var pip=extras.length?"pip install plantain2asr["+extras.join(",")+"]":"pip install plantain2asr";
+  if(needsTone){
+    pip += '\n' + 'pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"';
+  }
   el("p2a-install").innerHTML="<code>"+pip+"</code>";
 
   var code="";

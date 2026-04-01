@@ -172,7 +172,7 @@ plantain2asr supports several ASR model families. They all share the same interf
 | **GigaAM v3** | Large Sber model, e2e-RNNT architecture. Best Russian quality. | CUDA / MPS / CPU | `gigaam` | When quality matters and you have a GPU |
 | **GigaAM v2** | Previous GigaAM generation. | CUDA / MPS / CPU | `gigaam` | For comparison with v3 |
 | **Whisper** | OpenAI model, large-v3. Strong multilingual baseline. | CUDA / MPS / CPU | `whisper` | Universal baseline |
-| **T-One** | T-Bank model on ONNX Runtime. Fast inference. | CUDA / CPU | `tone` | When speed matters |
+| **T-One** | T-Bank model on ONNX Runtime. Fast inference. | CUDA / CPU | `tone` + T-One source archive | When speed matters |
 | **Vosk** | Lightweight offline model on Kaldi. CPU only. | CPU | `vosk` | No GPU, need offline |
 | **Canary** | NVIDIA NeMo Canary. Heavy, requires GPU. | CUDA | `canary` | Research comparisons |
 
@@ -190,6 +190,8 @@ Each model requires its own set of dependencies. Install only what you need:
 pip install plantain2asr[gigaam]
 pip install plantain2asr[whisper]
 pip install plantain2asr[vosk]
+pip install plantain2asr[tone]
+pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
 ```
 
 Or the full CPU/GPU stack at once:
@@ -434,7 +436,11 @@ function render(){
   var nm=NORMS.find(n=>n.id===S.norm);
   var mt=METRICS.filter(m=>S.metrics.has(m.id));
   var extras=[...new Set(ms.map(m=>m.extra).filter(Boolean))];
+  var needsTone=ms.some(m=>m.id==="tone");
   var pip=extras.length?"pip install plantain2asr["+extras.join(",")+"]":"pip install plantain2asr";
+  if(needsTone){
+    pip += '\n' + 'pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"';
+  }
   el("p2a-install").innerHTML="<code>"+pip+"</code>";
 
   var code="";

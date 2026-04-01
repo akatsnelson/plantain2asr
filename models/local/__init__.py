@@ -6,7 +6,7 @@ _LOCAL_EXPORTS = {
     "WhisperModel": (".whisper_model", "Install plantain2asr[whisper] to use Whisper."),
     "VoskModel": (".vosk_model", "Install plantain2asr[vosk] to use Vosk."),
     "CanaryModel": (".canary_model", "Install NeMo dependencies to use Canary."),
-    "ToneModel": (".tone_model", "Install plantain2asr[tone] or plantain2asr[tone-gpu] to use T-One."),
+    "ToneModel": (".tone_model", "Install plantain2asr[tone] or plantain2asr[tone-gpu], then install the T-One package from its source archive."),
 }
 
 

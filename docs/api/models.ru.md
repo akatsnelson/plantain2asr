@@ -19,7 +19,7 @@ from plantain2asr import Models
 | `Models.GigaAM_v2(model_name="v2_rnnt")` | GigaAM v2 RNNT | `gigaam` | CUDA / MPS / CPU |
 | `Models.GigaAM_v2(model_name="v2_ctc")` | GigaAM v2 CTC | `gigaam` | CUDA / MPS / CPU |
 | `Models.Whisper()` | Whisper large-v3 RU | `whisper` | CUDA / MPS / CPU |
-| `Models.Tone()` | T-one | `tone` | CUDA / CPU |
+| `Models.Tone()` | T-one | `tone` + source archive T-One | CUDA / CPU |
 | `Models.Vosk(model_path=...)` | Vosk | `vosk` | CPU |
 | `Models.Canary()` | NVIDIA Canary | `canary` | CUDA |
 | `Models.SaluteSpeech()` | SaluteSpeech API | none | облако |
@@ -33,6 +33,13 @@ model = Models.create("tone")
 ```
 
 Для неизвестного имени выбрасывается понятная ошибка с подсказками.
+
+Для T-One сначала установите runtime-extra, а затем сам source archive:
+
+```bash
+pip install plantain2asr[tone]
+pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
+```
 
 ## Использование
 

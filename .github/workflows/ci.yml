@@ -7,6 +7,7 @@ on:
 
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  TONE_ARCHIVE: "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
 
 jobs:
   core-smoke:
@@ -86,7 +87,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install T-One CPU profile
-        run: python -m pip install ".[tone-cpu]" pytest
+        run: python -m pip install ".[tone-cpu]" pytest "${{ env.TONE_ARCHIVE }}"
 
       - name: Run T-One smoke tests
         run: python -m pytest -m tone
@@ -217,7 +218,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install T-One GPU profile
-        run: python -m pip install ".[tone-gpu]" pytest
+        run: python -m pip install ".[tone-gpu]" pytest "${{ env.TONE_ARCHIVE }}"
 
       - name: Run GPU-oriented T-One smoke tests
         run: python -m pytest -m tone

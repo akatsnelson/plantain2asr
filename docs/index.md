@@ -60,6 +60,7 @@ You can branch, filter, and recombine at any point.
     pip install plantain2asr[vosk]
     pip install plantain2asr[canary]
     pip install plantain2asr[tone]
+    pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
     ```
 
 === "Research analysis"
@@ -95,7 +96,7 @@ Every block is a `>>` step. Compose them however you need.
 | GigaAM v3 | `Models.GigaAM_v3()` | `gigaam` | CUDA / MPS / CPU |
 | GigaAM v2 | `Models.GigaAM_v2()` | `gigaam` | CUDA / MPS / CPU |
 | Whisper | `Models.Whisper()` | `whisper` | CUDA / MPS / CPU |
-| T-one | `Models.Tone()` | `tone` | CUDA / CPU |
+| T-one | `Models.Tone()` | `tone` + T-One source archive | CUDA / CPU |
 | Vosk | `Models.Vosk(...)` | `vosk` | CPU |
 | Canary | `Models.Canary()` | `canary` | CUDA |
 | SaluteSpeech | `Models.SaluteSpeech()` | none | cloud |

@@ -60,6 +60,7 @@ print(df.groupby("model")[["WER", "CER"]].mean().sort_values("WER"))
     pip install plantain2asr[vosk]
     pip install plantain2asr[canary]
     pip install plantain2asr[tone]
+    pip install "tone @ https://github.com/voicekit-team/T-one/archive/3c5b6c015038173840e62cea99e10cdb1c759116.tar.gz"
     ```
 
 === "Исследовательский анализ"
@@ -95,7 +96,7 @@ graph LR
 | GigaAM v3 | `Models.GigaAM_v3()` | `gigaam` | CUDA / MPS / CPU |
 | GigaAM v2 | `Models.GigaAM_v2()` | `gigaam` | CUDA / MPS / CPU |
 | Whisper | `Models.Whisper()` | `whisper` | CUDA / MPS / CPU |
-| T-one | `Models.Tone()` | `tone` | CUDA / CPU |
+| T-one | `Models.Tone()` | `tone` + source archive T-One | CUDA / CPU |
 | Vosk | `Models.Vosk(...)` | `vosk` | CPU |
 | Canary | `Models.Canary()` | `canary` | CUDA |
 | SaluteSpeech | `Models.SaluteSpeech()` | none | облако |

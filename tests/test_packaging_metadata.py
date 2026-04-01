@@ -97,7 +97,7 @@ def test_release_workflows_gate_publish_and_validate_public_profiles():
 
     assert "python -m build" in publish_text
     assert "twine check dist/*" in publish_text
-    assert "python -m pytest -m core" in publish_text
+    assert 'python -m pip install dist/*.whl pytest && python -m pytest -m core' in publish_text
     assert "mkdocs build --strict" in publish_text
 
 
@@ -106,6 +106,6 @@ def test_release_metadata_is_no_longer_alpha():
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     project = pyproject["project"]
 
-    assert project["version"] == "1.0.1"
+    assert project["version"] == "1.0.2"
     assert "Development Status :: 5 - Production/Stable" in project["classifiers"]
     assert all("Alpha" not in classifier for classifier in project["classifiers"])
